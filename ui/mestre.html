@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Holives — Mestre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/mestre.css">
+</head>
+<body class="mestre">
+<header class="topo">
+  <div class="logo"><span class="logo-ponto" aria-hidden="true"></span>Holives</div>
+  <span class="chip" id="status-transmissao">OFFLINE</span>
+  <span class="numero" id="cronometro-live">00:00:00</span>
+  <span class="chip ao-vivo" id="status-gravacao" style="display:none"></span>
+  <div class="spacer"></div>
+  <div id="chips-destinos" class="linha" aria-label="Destinos"></div>
+  <div class="tecnico" aria-label="Indicadores técnicos">
+    <span class="item numero"><span id="stat-kbps">0 kbps</span></span>
+    <span class="item numero"><span id="stat-fps">30 FPS</span></span>
+    <span class="item numero"><span id="stat-perda">0.0% perdidos</span></span>
+    <span class="item numero"><span id="stat-cpu">18% CPU</span></span>
+  </div>
+  <button type="button" class="btn" id="btn-gravar" data-acao="iniciar-gravacao">Gravar</button>
+  <button type="button" class="btn btn-primario" id="btn-live" data-acao="iniciar-live">Iniciar transmissão</button>
+  <button type="button" class="btn-icone" data-acao="abrir-config" aria-label="Abrir configurações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+</header>
+
+<main class="mestre-main">
+  <section class="area-monitores" aria-label="Monitores">
+    <div id="aviso-sinal" class="alerta-faixa perigo" style="display:none" role="alert"></div>
+    <div id="guia-primeiro-uso" class="guia" style="display:none">
+      <div class="guia-passo"><b>1. Adicione uma câmera</b><span class="small muted">Escaneie o QR code com o celular.</span></div>
+      <div class="guia-passo"><b>2. Configure os destinos</b><span class="small muted">YouTube, Facebook e Instagram.</span></div>
+      <div class="guia-passo"><b>3. Vá ao ar</b><span class="small muted">Escolha a prévia e aperte Iniciar transmissão.</span></div>
+      <button type="button" class="btn" data-acao="camera-adicionar">Adicionar câmera</button>
+    </div>
+    <div class="monitores">
+      <div class="monitor previa">
+        <div class="cabecalho"><span class="etiqueta previa">● Prévia</span><span class="small muted">O que vai entrar</span></div>
+        <div class="video-wrap" id="monitor-previa"><video muted playsinline aria-label="Monitor de prévia"></video><div class="sem-sinal"><strong>Sem sinal</strong><span>Selecione uma fonte abaixo</span></div></div>
+        <div class="nome" id="nome-previa">—</div>
+      </div>
+      <div class="col-transicao" aria-label="Transição">
+        <button type="button" class="btn btn-cortar" data-acao="cortar">CORTAR <span class="small">Espaço</span></button>
+        <button type="button" class="btn" data-acao="transicao">TRANSIÇÃO <span class="small">Enter</span></button>
+        <label class="small muted" for="sel-transicao">Tipo</label>
+        <select id="sel-transicao" data-acao="definir-transicao"><option value="fade">Fade</option><option value="deslizar">Deslizar</option><option value="zoom">Zoom</option></select>
+        <label class="small muted" for="sel-duracao">Duração</label>
+        <select id="sel-duracao" data-acao="definir-transicao"><option value="300">300 ms</option><option value="500" selected>500 ms</option><option value="1000">1000 ms</option></select>
+        <div class="barra-transicao" aria-hidden="true"><i id="barra-transicao-fill"></i></div>
+        <button type="button" class="btn" data-acao="abrir-layout-vertical">Layout vertical 9:16</button>
+      </div>
+      <div class="monitor no-ar">
+        <div class="cabecalho"><span class="etiqueta no-ar">● No ar</span><span class="small muted">O público está vendo</span></div>
+        <div class="video-wrap" id="monitor-no-ar"><video muted playsinline aria-label="Monitor no ar"></video><div class="sem-sinal"><strong>Sem sinal</strong><span>Nenhuma fonte no ar</span></div></div>
+        <div class="nome" id="nome-no-ar">—</div>
+      </div>
+    </div>
+
+    <section class="fontes-area" aria-label="Fontes de vídeo">
+      <h3>Fontes — clique para prévia, duplo clique para ir direto ao ar</h3>
+      <div id="lista-fontes" class="lista-fontes"></div>
+    </section>
+
+    <section class="audio-area" aria-label="Mesa de áudio" id="mesa-audio">
+      <div class="linha" style="justify-content:space-between"><h3>Mesa de áudio</h3><span class="small muted">Use para sincronizar a boca com o som — atraso da mesa em ms</span></div>
+      <div class="presets">
+        <button type="button" class="btn" data-acao="preset-audio" data-preset="so-mesa">Só mesa</button>
+        <button type="button" class="btn" data-acao="preset-audio" data-preset="mesa-video">Mesa + vídeo</button>
+        <button type="button" class="btn" data-acao="preset-audio" data-preset="so-video">Só vídeo</button>
+        <button type="button" class="btn" data-acao="preset-audio" data-preset="so-camera">Só câmera no ar</button>
+      </div>
+      <div id="canais" class="canais"></div>
+    </section>
+  </section>
+
+  <aside class="lateral" aria-label="Mídia e sobreposições">
+    <div class="abas" role="tablist"><button type="button" class="aba ativa" data-acao="trocar-aba" data-aba="midia">Mídia</button><button type="button" class="aba" data-acao="trocar-aba" data-aba="sobreposicoes">Sobreposições</button></div>
+    <label class="sr-only" for="sel-aba-midia">Escolher painel</label>
+    <select id="sel-aba-midia" style="margin-top:10px"><option value="midia">Mídia</option><option value="sobreposicoes">Sobreposições</option></select>
+    <div id="painel-midia" class="conteudo">
+      <button type="button" class="btn" style="width:100%" data-acao="midia-adicionar">＋ Adicionar arquivos</button>
+      <p class="small muted" style="margin:10px 0">Arraste imagens e vídeos aqui. Ao selecionar, o item aparece na Tela de mídia.</p>
+      <div id="lista-midia"></div>
+      <div class="card" style="margin-top:12px">
+        <strong id="midia-nome">Vídeo de abertura</strong>
+        <div class="linha" style="margin-top:10px"><button type="button" class="btn" id="midia-play" data-acao="midia-play">Tocar</button><button type="button" class="btn" data-acao="midia-pause">Reiniciar</button><button type="button" class="btn" data-acao="midia-loop">Loop: ligado</button></div>
+        <label class="small muted" for="midia-volume">Volume da mídia</label><input id="midia-volume" type="range" min="0" max="100" value="80" data-acao="audio-volume" data-fonte-id="midia">
+        <label class="small muted" for="midia-fim">Ao terminar</label><select id="midia-fim"><option value="voltar">Voltar para a câmera anterior</option><option value="congelar">Congelar no último quadro</option></select>
+      </div>
+    </div>
+    <div id="painel-sobreposicoes" class="conteudo" style="display:none">
+      <div class="sobreposicao"><div><strong>Logo</strong><p class="small muted">Canto superior direito · 72 px · 90%</p></div><button type="button" class="switch" id="sw-logo" role="switch" aria-checked="true" aria-label="Ligar logo" data-acao="sobreposicao-alternar" data-id="logo"></button></div>
+      <div class="sobreposicao"><div style="flex:1"><strong>Legenda inferior / tarja</strong><label class="small muted" for="tarja-linha1">Linha 1</label><input id="tarja-linha1"><label class="small muted" for="tarja-linha2">Linha 2</label><input id="tarja-linha2"></div><button type="button" class="switch" id="sw-tarja" role="switch" aria-checked="true" aria-label="Ligar tarja" data-acao="sobreposicao-alternar" data-id="tarja"></button></div>
+      <div class="sobreposicao"><div style="flex:1"><strong>Texto livre / aviso</strong><input id="texto-livre"></div><button type="button" class="switch" id="sw-texto" role="switch" aria-checked="false" aria-label="Ligar texto livre" data-acao="sobreposicao-alternar" data-id="texto"></button></div>
+      <div class="sobreposicao"><div><strong>Holyrics</strong><p class="small muted">Conexão: <span id="holyrics-status">conectado</span> · Posição inferior</p><button type="button" class="btn" data-acao="abrir-config">Configurar conexão</button></div><button type="button" class="switch" id="sw-holyrics" role="switch" aria-checked="true" aria-label="Mostrar Holyrics na live" data-acao="sobreposicao-alternar" data-id="holyrics"></button></div>
+    </div>
+  </aside>
+</main>
+
+<!-- MODAL CÂMERA -->
+<div class="modal" id="modal-camera" role="dialog" aria-modal="true" aria-label="Adicionar câmera"><div class="modal-caixa">
+  <div class="modal-cabecalho"><h2>Adicionar câmera</h2><button type="button" class="btn-icone" data-acao="fechar-modal" aria-label="Fechar">✕</button></div>
+  <div style="display:flex;gap:16px"><div class="qr">QR CODE<br>Holives<br>192.168.0.10</div><div><p><strong>Endereço:</strong><br>https://192.168.0.10:8443/camera</p><ol><li>Conecte o celular no mesmo Wi-Fi</li><li>Aponte a câmera para o código</li><li>Aceite o aviso de segurança do navegador</li><li>Toque em Conectar</li></ol></div></div>
+  <h3 style="margin-top:16px">Aguardando aprovação</h3>
+  <div class="linha" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--borda)"><span>iPhone de Ana</span><span class="linha"><button type="button" class="btn" data-acao="aceitar-camera" data-nome="iPhone de Ana">Aceitar</button><button type="button" class="btn" data-acao="recusar-camera" data-nome="iPhone de Ana">Recusar</button></span></div>
+  <div class="linha" style="justify-content:space-between;padding:10px 0"><span>Galaxy de Pedro</span><span class="linha"><button type="button" class="btn" data-acao="aceitar-camera" data-nome="Galaxy de Pedro">Aceitar</button><button type="button" class="btn" data-acao="recusar-camera" data-nome="Galaxy de Pedro">Recusar</button></span></div>
+</div></div>
+
+<!-- MODAL DESTINOS -->
+<div class="modal" id="modal-destinos" role="dialog" aria-modal="true" aria-label="Destinos"><div class="modal-caixa">
+  <div class="modal-cabecalho"><h2>Destinos da transmissão</h2><button type="button" class="btn-icone" data-acao="fechar-modal" aria-label="Fechar">✕</button></div>
+  <div class="destino-card"><div class="linha" style="justify-content:space-between"><strong>YouTube</strong><button type="button" class="switch" role="switch" aria-checked="true" aria-label="Ativar YouTube" data-acao="destino-alternar"></button></div><div class="campo"><label>Endereço do servidor</label><input value="rtmp://a.rtmp.youtube.com/live2"></div><div class="campo"><label>Chave de transmissão</label><input type="password" value="chave-youtube"></div><div class="linha"><select aria-label="Formato YouTube"><option>Horizontal 16:9</option><option>Vertical 9:16</option></select><select aria-label="Qualidade YouTube"><option>1080p</option><option>720p</option></select><button type="button" class="btn" data-acao="testar-destino">Testar conexão</button></div></div>
+  <div class="destino-card"><div class="linha" style="justify-content:space-between"><strong>Facebook</strong><button type="button" class="switch" role="switch" aria-checked="false" aria-label="Ativar Facebook" data-acao="destino-alternar"></button></div><div class="campo"><label>Endereço do servidor</label><input value="rtmps://live-api-s.facebook.com:443/rtmp/"></div><div class="campo"><label>Chave de transmissão</label><input type="password" value="chave-facebook"></div></div>
+  <div class="destino-card"><div class="linha" style="justify-content:space-between"><strong>Instagram — sempre vertical</strong><button type="button" class="switch" role="switch" aria-checked="true" aria-label="Ativar Instagram" data-acao="destino-alternar"></button></div><p class="small muted">Formato fixo: Vertical 9:16 · 720p</p></div>
+  <button type="button" class="btn" data-acao="destino-adicionar">＋ Adicionar destino personalizado (RTMP)</button>
+  <div style="text-align:right;margin-top:16px"><button type="button" class="btn" data-acao="destino-salvar">Salvar destinos</button></div>
+</div></div>
+
+<!-- MODAL VERTICAL -->
+<div class="modal" id="modal-vertical" role="dialog" aria-modal="true" aria-label="Layout vertical"><div class="modal-caixa">
+  <div class="modal-cabecalho"><h2>Layout vertical — Instagram 9:16</h2><button type="button" class="btn-icone" data-acao="fechar-modal" aria-label="Fechar">✕</button></div>
+  <div style="display:flex;gap:16px"><div style="width:140px;background:#15171C;border:1px solid var(--borda);border-radius:12px;overflow:hidden"><div style="padding:12px;text-align:center;background:#1D2027">Arte superior<br><span class="small muted">Igreja Holives</span></div><div style="aspect-ratio:16/9;background:#272B34;display:grid;place-items:center">Vídeo 16:9</div><div style="padding:12px;text-align:center;background:#1D2027">Arte inferior<br><span class="small muted">Culto de Domingo · 19h</span></div></div><div style="flex:1"><div class="campo"><label>Imagem superior</label><input type="file"></div><div class="campo"><label>Imagem inferior</label><input type="file"></div><div class="campo"><label>Cor de fundo</label><input type="color" value="#15171C"></div><div class="campo"><label>Texto opcional</label><input value="Igreja Holives — Culto de Domingo"></div><button type="button" class="btn" data-acao="destino-salvar">Aplicar layout</button></div></div>
+</div></div>
+
+<!-- MODAL CONFIG -->
+<div class="modal" id="modal-config" role="dialog" aria-modal="true" aria-label="Configurações"><div class="modal-caixa">
+  <div class="modal-cabecalho"><h2>Configurações</h2><button type="button" class="btn-icone" data-acao="fechar-modal" aria-label="Fechar">✕</button></div>
+  <div class="config-abas"><button type="button" class="btn">Vídeo</button><button type="button" class="btn">Áudio</button><button type="button" class="btn">Gravação</button><button type="button" class="btn">Holyrics</button><button type="button" class="btn">Rede</button><button type="button" class="btn">Atalhos</button></div>
+  <div class="campo"><label>Resolução</label><select><option>1080p</option><option>720p</option></select></div>
+  <div class="campo"><label>FPS</label><select><option>30</option><option>60</option></select></div>
+  <div class="campo"><label>Dispositivo de entrada da mesa</label><input value="Mesa de som USB"></div>
+  <div class="campo"><label>Dispositivo de saída do fone</label><input value="Fone do operador"></div>
+  <div class="campo"><label>Pasta de gravação</label><input value="C:\Holives\Gravações"></div>
+  <div class="campo"><label>Holyrics — IP</label><input value="192.168.0.20"></div>
+  <div class="campo"><label>Rede — IP do mestre</label><input value="192.168.0.10"></div>
+  <p class="small muted"><strong>Atalhos:</strong> 1–8 prévia · Espaço cortar · Enter transição · M mudo saída geral · F2 cenários</p>
+  <div style="text-align:right"><button type="button" class="btn" data-acao="config-salvar">Salvar configurações</button></div>
+</div></div>
+
+<!-- MODAL ENCERRAR -->
+<div class="modal" id="modal-encerrar" role="dialog" aria-modal="true" aria-label="Confirmar encerramento"><div class="modal-caixa" style="max-width:480px">
+  <h2>Encerrar transmissão?</h2><p class="muted">A live será encerrada em todos os destinos e a gravação será parada. Essa ação não pode ser desfeita.</p>
+  <div class="linha" style="justify-content:flex-end;margin-top:20px"><button type="button" class="btn" data-acao="fechar-modal" autofocus>Cancelar</button><button type="button" class="btn btn-perigo" data-acao="confirmar-encerrar">Encerrar transmissão</button></div>
+</div></div>
+
+<!-- MODAL RENOMEAR -->
+<div class="modal" id="modal-renomear" role="dialog" aria-modal="true" aria-label="Renomear fonte"><div class="modal-caixa" style="max-width:440px">
+  <h2>Renomear fonte</h2><div class="campo"><label for="novo-nome">Novo nome</label><input id="novo-nome" value="Câmera central"></div>
+  <div class="linha" style="justify-content:flex-end"><button type="button" class="btn" data-acao="fechar-modal">Cancelar</button><button type="button" class="btn" data-acao="camera-renomear">Renomear</button></div>
+</div></div>
+
+<div id="seletor-cenario" style="display:none;position:fixed;left:16px;bottom:16px;background:var(--superficie);border:1px solid var(--borda-forte);padding:12px;border-radius:12px;z-index:90">
+  <label for="cenario-select"><strong>Cenário (F2)</strong></label><select id="cenario-select"><option value="primeiro-uso">Primeiro uso</option><option value="pronto" selected>Pronto para transmitir</option><option value="ao-vivo">Ao vivo normal</option><option value="problemas">Ao vivo com problemas</option></select>
+  <p class="small muted">Só para visualizar estados. Não afeta a transmissão real.</p>
+</div>
+
+<div class="toast-area" id="toasts" aria-live="polite"></div>
+<script src="js/mock.js"></script>
+<script src="js/mestre.js"></script>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Holives — Controle remoto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/controle.css">
+</head>
+<body class="controle">
+<header class="controle-topo">
+  <div class="logo"><span class="logo-ponto"></span>Holives <span class="small muted">· Controle remoto</span></div>
+  <span class="chip" id="status-controle">OFFLINE</span>
+  <span class="numero">00:12:42</span>
+  <div style="flex:1"></div>
+  <span class="chip ok"><span class="ponto"></span>Conectado ao mestre</span>
+</header>
+<main class="controle-main">
+  <section aria-label="Fontes">
+    <div id="grade-fontes" class="grade-fontes"></div>
+    <div class="acoes-grandes">
+      <button type="button" class="btn btn-primario" data-acao="cortar">CORTAR</button>
+      <button type="button" class="btn" data-acao="transicao">TRANSIÇÃO</button>
+    </div>
+    <p class="small muted" style="margin-top:8px">Toque para prévia · Toque duas vezes para ir direto ao ar. Sem conexão com o mestre: os botões ficam desativados e aparece o aviso abaixo.</p>
+    <div class="alerta-faixa" style="display:none" id="sem-conexao">Sem conexão com o mestre — verifique o Wi-Fi e se o computador mestre está ligado.</div>
+  </section>
+  <aside class="painel-controle" aria-label="Áudio e sobreposições">
+    <h3>Áudio</h3>
+    <div id="audio-controle"></div>
+    <div class="linha" style="gap:6px;margin:12px 0;flex-wrap:wrap">
+      <button type="button" class="btn" data-acao="preset-audio" data-preset="so-mesa">Só mesa</button>
+      <button type="button" class="btn" data-acao="preset-audio" data-preset="mesa-video">Mesa + vídeo</button>
+      <button type="button" class="btn" data-acao="preset-audio" data-preset="so-video">Só vídeo</button>
+    </div>
+    <h3>Sobreposições</h3>
+    <div class="linha" style="justify-content:space-between;padding:8px 0"><span>Logo</span><button type="button" class="switch" role="switch" aria-checked="true" aria-label="Logo" data-acao="sobreposicao-alternar" data-id="logo"></button></div>
+    <div class="linha" style="justify-content:space-between;padding:8px 0"><span>Tarja</span><button type="button" class="switch" role="switch" aria-checked="true" aria-label="Tarja" data-acao="sobreposicao-alternar" data-id="tarja"></button></div>
+    <div class="linha" style="justify-content:space-between;padding:8px 0"><span>Holyrics</span><button type="button" class="switch" role="switch" aria-checked="true" aria-label="Holyrics" data-acao="sobreposicao-alternar" data-id="holyrics"></button></div>
+  </aside>
+</main>
+<script src="js/mock.js"></script>
+<script src="js/controle.js"></script>
+</body>
+</html>

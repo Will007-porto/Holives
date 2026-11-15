@@ -1,0 +1,30 @@
+/* Holives — tokens.css — variáveis de design por função */
+:root{
+  --bg:#0B0C0F;
+  --superficie:#15171C;
+  --superficie-2:#1D2027;
+  --superficie-3:#272B34;
+  --borda:rgb(255 255 255 / 0.08);
+  --borda-forte:rgb(255 255 255 / 0.16);
+  --texto:#EDEEF0;
+  --texto-apagado:#A3A8B3;
+  --acento:#6E7BFF;
+  --acento-contraste:#FFFFFF;
+  --no-ar:#E5484D;
+  --previa:#30A46C;
+  --alerta:#F5A524;
+  --perigo:#E5484D;
+  --raio:12px;
+  --raio-pequeno:8px;
+  --esp-4:4px;
+  --esp-8:8px;
+  --esp-16:16px;
+  --esp-24:24px;
+  --esp-32:32px;
+  --esp-48:48px;
+  --esp-64:64px;
+  --fonte-titulo:"Sora",system-ui,sans-serif;
+  --fonte-texto:"Inter",system-ui,sans-serif;
+  --nivel:0;
+  --duracao:180ms;
+}

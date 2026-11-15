@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Holives — Câmera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/camera.css">
+</head>
+<body class="camera">
+<!-- TELA DE CONEXÃO -->
+<main class="camera-wrap tela-camera" id="tela-conexao">
+  <div class="logo camera-logo"><span class="logo-ponto"></span>Holives</div>
+  <p class="muted">Use este aparelho como câmera da live. Conecte no mesmo Wi-Fi do computador mestre.</p>
+  <div class="form-camera">
+    <div class="campo campo-grande"><label for="nome-aparelho">Nome deste aparelho</label><input id="nome-aparelho" value="Câmera do corredor" placeholder="Ex.: Câmera do corredor"></div>
+    <div class="campo campo-grande"><label for="escolha-camera">Câmera</label><select id="escolha-camera"><option value="traseira">Traseira</option><option value="frontal">Frontal</option></select></div>
+    <div class="campo campo-grande"><label for="qualidade">Qualidade</label><select id="qualidade"><option>720p</option><option selected>1080p</option></select></div>
+    <div class="linha" style="justify-content:space-between"><span>Enviar o áudio deste aparelho</span><button type="button" class="switch" role="switch" aria-checked="true" aria-label="Enviar áudio" data-acao="camera-audio"></button></div>
+    <p id="estado-conexao" class="small muted">Pronto para conectar. Mantenha a tela ligada e o aparelho na tomada.</p>
+    <button type="button" class="btn btn-primario" data-acao="camera-conectar">Conectar</button>
+    <button type="button" class="btn" data-acao="camera-tentar-de-novo">Tentar de novo</button>
+    <p class="small muted">Se a permissão for negada, toque no cadeado do navegador e libere a câmera e o microfone.</p>
+  </div>
+</main>
+
+<!-- TELA AO VIVO -->
+<section class="tela-live tela-camera" id="tela-live-camera" style="display:none" aria-label="Câmera ao vivo">
+  <div class="video-wrap com-sinal"><video muted playsinline aria-label="Vídeo da câmera"></video></div>
+  <div class="tally previa" id="tally"><span class="tally-label" id="tally-label">PRÉVIA</span></div>
+  <div class="indicadores">
+    <span class="chip ok"><span class="ponto"></span>Conectado · 1080p</span>
+    <span class="chip"><span class="ponto"></span>🔋 82% · 📶 92%</span>
+  </div>
+  <div id="faixa-reconectando" class="faixa-reconectando" style="display:none;position:absolute;top:0;left:0;right:0;z-index:8">Reconectando… mantenha o aparelho no Wi-Fi</div>
+  <div class="mensagem-operador"><strong>Mensagem do operador</strong><p style="margin:4px 0 0">Aproxime mais — mostre o púlpito</p></div>
+  <div class="retorno" id="retorno" style="display:none"><div class="video-wrap"><video muted playsinline aria-label="Retorno do que está no ar"></video><div class="sem-sinal"><span>Retorno</span></div></div><p class="small" style="text-align:center;background:rgb(11 12 15 / .8);padding:4px;border-radius:6px">O que está NO AR</p></div>
+  <div class="controles" id="controles-camera">
+    <div class="aviso-bateria" id="aviso-bateria" style="display:none">Bateria fraca — abaixo de 15%. Conecte o carregador.</div>
+    <div class="zoom-barra"><span>Zoom</span><input type="range" min="1" max="5" step="0.1" value="1" aria-label="Zoom" data-acao="camera-zoom"><span class="numero">1.0×</span></div>
+    <div class="controles-linha">
+      <button type="button" class="controle-btn" data-acao="camera-virar" aria-label="Virar câmera">⇄</button>
+      <button type="button" class="controle-btn ativo" data-acao="camera-microfone" aria-label="Microfone ligado">🎤</button>
+      <button type="button" class="controle-btn" data-acao="camera-lanterna" aria-label="Lanterna">🔦</button>
+      <button type="button" class="controle-btn" data-acao="camera-travar-foco" aria-label="Travar foco e exposição">◎</button>
+      <button type="button" class="controle-btn" data-acao="camera-travar-orientacao" aria-label="Travar orientação">🔒</button>
+    </div>
+    <div class="controles-linha">
+      <button type="button" class="btn" data-acao="camera-ver-retorno" style="flex:1">Ver retorno</button>
+      <button type="button" class="btn" data-acao="camera-reconectar" style="flex:1">Reconectar</button>
+      <button type="button" class="btn" data-acao="camera-sair" style="flex:1">Sair</button>
+    </div>
+    <p class="small" style="text-align:center;color:var(--texto-apagado)">Mantenha a tela ligada e o aparelho na tomada · Toque para mostrar os controles</p>
+  </div>
+</section>
+
+<div class="modal" id="modal-sair" role="dialog" aria-modal="true" aria-label="Sair"><div class="modal-caixa" style="max-width:420px"><h2>Sair da câmera?</h2><p class="muted">A câmera sairá da live. O operador será avisado.</p><div class="linha" style="justify-content:flex-end;margin-top:16px"><button type="button" class="btn" data-acao="fechar-modal">Cancelar</button><button type="button" class="btn btn-perigo" data-acao="confirmar-sair">Sair</button></div></div></div>
+<script src="js/mock.js"></script>
+<script src="js/camera.js"></script>
+</body>
+</html>

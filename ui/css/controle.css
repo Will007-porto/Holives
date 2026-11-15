@@ -1,0 +1,20 @@
+/* controle.css — tablet deitado, botões grandes */
+body.controle{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+.controle-topo{height:60px;display:flex;align-items:center;gap:14px;padding:0 16px;background:var(--superficie);border-bottom:1px solid var(--borda)}
+.controle-main{flex:1;min-height:0;display:grid;grid-template-columns:1fr 300px;gap:12px;padding:12px}
+.grade-fontes{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-content:start}
+.fonte-grande{background:var(--superficie);border:1px solid var(--borda);border-radius:12px;padding:10px;cursor:pointer;text-align:left;min-height:118px}
+.fonte-grande.previa{border-color:var(--previa);box-shadow:0 0 0 1px var(--previa)}
+.fonte-grande.no-ar{border-color:var(--no-ar);box-shadow:0 0 0 1px var(--no-ar)}
+.fonte-grande .video-wrap{height:64px}
+.acoes-grandes{display:flex;gap:10px;margin-top:12px}
+.acoes-grandes .btn{flex:1;min-height:56px;font-size:16px}
+.painel-controle{background:var(--superficie);border:1px solid var(--borda);border-radius:12px;padding:14px;overflow-y:auto}
+.canal-mini{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--borda)}
+.canal-mini:last-child{border-bottom:0}
+.canal-mini input[type="range"]{flex:1}
+@media (max-width:767px){
+  .controle-main{grid-template-columns:1fr;overflow-y:auto}
+  .grade-fontes{grid-template-columns:repeat(2,1fr)}
+  body.controle{overflow:auto;height:auto;min-height:100dvh}
+}

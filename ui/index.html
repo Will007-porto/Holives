@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Holives — Protótipo de design</title>
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/base.css">
+<style>body{padding:32px;max-width:760px;margin:0 auto} .card{margin:12px 0}</style>
+</head>
+<body>
+<div class="logo"><span class="logo-ponto"></span>Holives</div>
+<p class="muted">Protótipo SOMENTE de design — sem WebRTC, sem streaming, sem servidor. Tudo com dados simulados em <code>js/mock.js</code>.</p>
+<div class="card"><h2>1. Mestre — computador</h2><p class="muted">1366×768 a 1920×1080, grade fixa 100dvh. Aperte F2 para trocar de cenário.</p><p><a href="mestre.html">Abrir mestre.html →</a></p></div>
+<div class="card"><h2>2. Câmera — celular / tablet</h2><p class="muted">Mobile-first, 360px+, tally NO AR / PRÉVIA / EM ESPERA.</p><p><a href="camera.html">Abrir camera.html →</a></p></div>
+<div class="card"><h2>3. Controle — tablet remoto</h2><p class="muted">Botões grandes, mesa reduzida, sobreposições.</p><p><a href="controle.html">Abrir controle.html →</a></p></div>
+<p class="small muted">Como testar: abra cada arquivo direto no navegador. Toda ação dispara <code>holives:acao</code> — veja no console com: <code>document.addEventListener('holives:acao', e =&gt; console.log(e.detail))</code></p>
+</body>
+</html>

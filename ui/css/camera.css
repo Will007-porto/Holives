@@ -1,0 +1,37 @@
+/* camera.css — mobile-first, 100dvh, safe-area, tally */
+body.camera{height:100dvh;overflow:hidden;background:var(--bg);padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+.camera-wrap{max-width:520px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:16px}
+.camera-logo{font-size:22px}
+.form-camera{flex:1;display:flex;flex-direction:column;gap:16px;justify-content:center}
+.form-camera .btn-primario{min-height:56px;font-size:16px}
+.campo-grande input,.campo-grande select{min-height:52px;font-size:16px}
+.tela-live{position:relative;height:100dvh;overflow:hidden;background:#0B0C0F}
+.tela-live .video-wrap{position:absolute;inset:0;aspect-ratio:auto;border-radius:0;border:0}
+.tela-live .video-wrap video{object-fit:cover}
+.tally{position:absolute;inset:0;pointer-events:none;border:6px solid transparent;z-index:5}
+.tally.no-ar{border-color:var(--no-ar)}
+.tally.previa{border-color:var(--previa)}
+.tally-label{position:absolute;top:calc(12px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);padding:8px 14px;border-radius:999px;font-weight:800;letter-spacing:.08em;font-size:13px;background:rgb(11 12 15 / .8);border:1px solid var(--borda)}
+.tally.no-ar .tally-label{background:var(--no-ar);color:#fff}
+.tally.previa .tally-label{background:var(--previa);color:#fff}
+.mensagem-operador{position:absolute;top:64px;left:12px;right:12px;background:rgb(11 12 15 / .85);border:1px solid var(--borda-forte);border-radius:12px;padding:12px;z-index:6}
+.controles{position:absolute;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:7;display:flex;flex-direction:column;gap:12px;transition:opacity 200ms ease}
+.controles.ocultos{opacity:0;pointer-events:none}
+.controles-linha{display:flex;gap:10px;justify-content:center}
+.controle-btn{min-width:56px;min-height:56px;border-radius:50%;background:rgb(11 12 15 / .75);border:1px solid var(--borda-forte);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
+.controle-btn.ativo{background:var(--no-ar);color:#fff}
+.controle-btn svg{width:22px;height:22px}
+.zoom-barra{display:flex;gap:10px;align-items:center;background:rgb(11 12 15 / .75);padding:10px 12px;border-radius:999px;border:1px solid var(--borda)}
+.zoom-barra input{flex:1;accent-color:var(--acento)}
+.indicadores{position:absolute;top:calc(12px + env(safe-area-inset-top));left:12px;right:12px;display:flex;justify-content:space-between;z-index:6}
+.retorno{position:absolute;right:12px;bottom:180px;width:120px;z-index:6}
+.retorno .video-wrap{aspect-ratio:16/9}
+.faixa-reconectando{background:var(--alerta);color:#111;padding:10px;text-align:center;font-weight:700;font-size:13px}
+.aviso-bateria{background:rgb(245 165 36 / .18);border:1px solid var(--alerta);border-radius:10px;padding:10px;font-size:13px}
+@media (orientation:landscape) and (max-height:500px){
+  .form-camera{justify-content:flex-start;overflow-y:auto}
+  .retorno{bottom:140px}
+}
+@media (min-width:768px){
+  .camera-wrap{max-width:640px}
+}
