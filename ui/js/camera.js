@@ -14,9 +14,9 @@
       var btn=e.target.closest("[data-acao]"); if(!btn) return;
       var a=btn.dataset.acao;
       if(a==="camera-conectar"){
-        document.getElementById("estado-conexao").textContent="Conectando… aguardando o operador aceitar.";
+        if(!window.HolivesReal) document.getElementById("estado-conexao").textContent="Conectando… aguardando o operador aceitar.";
         emitir("camera-adicionar",{nome:document.getElementById("nome-aparelho").value});
-        setTimeout(function(){ mostrar("tela-live-camera"); document.getElementById("estado-conexao").textContent="Conectado"; }, 900);
+        if(!window.HolivesReal) setTimeout(function(){ mostrar("tela-live-camera"); document.getElementById("estado-conexao").textContent="Conectado"; }, 900);
       }
       if(a==="camera-virar" || a==="camera-microfone" || a==="camera-lanterna" || a==="camera-travar-foco" || a==="camera-travar-orientacao"){
         btn.classList.toggle("ativo"); emitir(a,{});

@@ -27,7 +27,7 @@
       var btn=e.target.closest("[data-acao]"); if(!btn) return;
       var a=btn.dataset.acao;
       if(a==="cortar"){ S.noArId=S.previaId; emitir("cortar",{fonteId:S.noArId}); render(); }
-      if(a==="transicao"){ emitir("transicao",{tipo:S.transicao.tipo}); S.noArId=S.previaId; render(); }
+      if(a==="transicao"){ emitir("transicao",{estilo:S.transicao.tipo}); S.noArId=S.previaId; render(); }
       if(a==="audio-mudo"){ var c=S.audio.canais.find(function(x){return x.id===btn.dataset.fonteId}); if(c) c.mudo=!c.mudo; emitir("audio-mudo",{canalId:btn.dataset.fonteId}); render(); }
       if(a==="preset-audio"){ emitir("audio-volume",{preset:btn.dataset.preset}); }
       if(a==="sobreposicao-alternar"){ btn.setAttribute("aria-checked", btn.getAttribute("aria-checked")==="true" ? "false" : "true"); emitir("sobreposicao-alternar",{id:btn.dataset.id}); }

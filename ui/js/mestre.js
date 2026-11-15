@@ -119,7 +119,7 @@
       var btn = e.target.closest("[data-acao]"); if(!btn) return;
       var acao = btn.dataset.acao, fid = btn.dataset.fonteId;
       if(acao==="cortar"){ S.noArId = S.previaId; emitir("cortar",{fonteId:S.noArId}); toast("Corte para "+ (S.fontes.find(function(f){return f.id===S.noArId})||{}).nome); }
-      if(acao==="transicao"){ emitir("transicao",{tipo:S.transicao.tipo,duracao:S.transicao.duracao}); var bar=el("barra-transicao-fill"); bar.style.width="100%"; setTimeout(function(){ S.noArId=S.previaId; bar.style.width="0"; renderAll(); }, S.transicao.duracao); toast("Transição "+S.transicao.tipo+" executada"); }
+      if(acao==="transicao"){ emitir("transicao",{estilo:S.transicao.tipo,duracao:S.transicao.duracao}); var bar=el("barra-transicao-fill"); bar.style.width="100%"; setTimeout(function(){ S.noArId=S.previaId; bar.style.width="0"; renderAll(); }, S.transicao.duracao); toast("Transição "+S.transicao.tipo+" executada"); }
       if(acao==="iniciar-live"){ S.transmissao.estado="ao-vivo"; S.transmissao.kbps=5400; inicioLive=Date.now(); emitir("iniciar-live",{}); toast("Transmissão iniciada — você está ao vivo"); }
       if(acao==="encerrar-live"){ abrirModal("modal-encerrar"); }
       if(acao==="confirmar-encerrar"){ S.transmissao.estado="offline"; S.transmissao.kbps=0; emitir("encerrar-live",{}); fecharModal(document.getElementById("modal-encerrar")); toast("Transmissão encerrada"); }
@@ -144,8 +144,8 @@
     document.addEventListener("change", function(e){
       var t=e.target;
       if(t.dataset.acao==="audio-volume"){ var c=S.audio.canais.find(function(x){return x.id===t.dataset.fonteId}); if(c){ c.volume=parseInt(t.value,10); emitir("audio-volume",{canalId:c.id,volume:c.volume}); } }
-      if(t.id==="sel-transicao"){ S.transicao.tipo=t.value; emitir("definir-transicao",{tipo:t.value,duracao:S.transicao.duracao}); }
-      if(t.id==="sel-duracao"){ S.transicao.duracao=parseInt(t.value,10); emitir("definir-transicao",{tipo:S.transicao.tipo,duracao:S.transicao.duracao}); }
+      if(t.id==="sel-transicao"){ S.transicao.tipo=t.value; emitir("definir-transicao",{estilo:t.value,duracao:S.transicao.duracao}); }
+      if(t.id==="sel-duracao"){ S.transicao.duracao=parseInt(t.value,10); emitir("definir-transicao",{estilo:S.transicao.tipo,duracao:S.transicao.duracao}); }
       if(t.id==="sel-aba-midia"){ document.getElementById("painel-midia").style.display = t.value==="midia" ? "block" : "none"; document.getElementById("painel-sobreposicoes").style.display = t.value==="sobreposicoes" ? "block" : "none"; }
       renderAll();
     });
@@ -160,7 +160,7 @@
       if(e.target.matches("input,textarea,select")) return;
       if(e.key>="1" && e.key<="8"){ var f=S.fontes[parseInt(e.key,10)-1]; if(f){ S.previaId=f.id; emitir("selecionar-previa",{fonteId:f.id}); renderAll(); } }
       if(e.key===" "){ e.preventDefault(); S.noArId=S.previaId; emitir("cortar",{fonteId:S.noArId}); renderAll(); }
-      if(e.key==="Enter"){ e.preventDefault(); S.noArId=S.previaId; emitir("transicao",{tipo:S.transicao.tipo}); renderAll(); }
+      if(e.key==="Enter"){ e.preventDefault(); S.noArId=S.previaId; emitir("transicao",{estilo:S.transicao.tipo}); renderAll(); }
       if(e.key.toLowerCase()==="m"){ var saida=S.audio.canais.find(function(x){return x.id==="saida"}); saida.mudo=!saida.mudo; emitir("audio-mudo",{canalId:"saida",mudo:saida.mudo}); renderAll(); }
     });
     document.getElementById("seletor-cenario").addEventListener("change", function(e){
