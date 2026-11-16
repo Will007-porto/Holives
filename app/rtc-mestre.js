@@ -19,6 +19,7 @@
   };
 
   RtcMestre.prototype._enviar = function (o) { if (this.ws && this.ws.readyState === 1) this.ws.send(JSON.stringify(o)); };
+  RtcMestre.prototype.enviar = function (o) { this._enviar(o); };
   RtcMestre.prototype.aceitar = function (id) { this._enviar({ t: 'aceitar', id: id }); };
   RtcMestre.prototype.recusar = function (id) { this._enviar({ t: 'recusar', id: id }); };
   RtcMestre.prototype.remover = function (slot) { this._enviar({ t: 'remover', slot: slot }); this._fechar(slot); };
@@ -37,6 +38,7 @@
       case 'estado-camera': cb.aoEstadoCamera(m.slot, m.info); break;
       case 'sdp': this._aoSdp(m.slot, m.dados); break;
       case 'ice': this._aoIce(m.slot, m.dados); break;
+      default: if (cb.aoOutro) cb.aoOutro(m); break;
     }
   };
 

@@ -18,3 +18,8 @@ body.controle{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
   .grade-fontes{grid-template-columns:repeat(2,1fr)}
   body.controle{overflow:auto;height:auto;min-height:100dvh}
 }
+
+/* conexao com o mestre perdida */
+.chip.erro-conexao{color:var(--perigo);border-color:rgb(229 72 77 / .4)}
+.fonte-grande .video-wrap video{object-fit:contain}
+main button:disabled,main input:disabled{opacity:.45;cursor:not-allowed}

@@ -4,6 +4,7 @@
 const { SLOTS, MAX_CAMERAS, calcularTally } = require('./nucleo');
 
 const MAX_PENDENTES = 8;
+const MAX_CONTROLES = 4;
 
 class Sinalizacao {
   constructor() {
@@ -12,6 +13,7 @@ class Sinalizacao {
     this.slots = {};              // slot -> {slot, idAparelho, nome, ws|null, info}
     this.tally = { previa: null, noAr: null };
     this.proximoId = 1;
+    this.controles = new Set();   // tablets/celulares de controle remoto (ja autenticados pelo servidor)
   }
 
   _enviar(ws, obj) {
@@ -51,13 +53,31 @@ class Sinalizacao {
   /** Registra uma conexao. papel: 'mestre' | 'camera'. */
   conectar(ws, papel) {
     if (papel === 'mestre') return this._conectarMestre(ws);
+    if (papel === 'controle') return this._conectarControle(ws);
     return this._conectarCamera(ws);
   }
+
+  /** Controle remoto: so repassa acoes ao mestre (que decide o que aceitar) e recebe o estado. */
+  _conectarControle(ws) {
+    if (this.controles.size >= MAX_CONTROLES) { try { ws.close(1000, 'lotado'); } catch (e) { /* */ } return; }
+    this.controles.add(ws);
+    this._avisarQtd();
+    ws.on('message', (dados) => {
+      const m = this._ler(dados);
+      if (!m || m.t !== 'acao' || !m.acao || typeof m.acao !== 'object' || Array.isArray(m.acao)) return;
+      this._paraMestre({ t: 'controle-acao', acao: m.acao });
+    });
+    ws.on('close', () => { this.controles.delete(ws); this._avisarQtd(); });
+  }
+  _avisarQtd() { this._paraMestre({ t: 'controle-qtd', n: this.controles.size }); }
+  /** Desliga todos os controles (usado quando o codigo de acesso e trocado). */
+  derrubarControles() { this.controles.forEach((c) => { try { c.close(4403, 'codigo trocado'); } catch (e) { /* */ } }); }
 
   _conectarMestre(ws) {
     if (this.mestre && this.mestre !== ws) { try { this.mestre.close(4000, 'substituido'); } catch (e) { /* */ } }
     this.mestre = ws;
     this._enviar(ws, this._roster());
+    this._enviar(ws, { t: 'controle-qtd', n: this.controles.size });
     // pede que as cameras ja conectadas renegociem o WebRTC com o novo mestre
     SLOTS.forEach((s) => { const c = this.slots[s]; if (c && c.ws) this._enviar(c.ws, { t: 'renegociar' }); });
     ws.on('message', (dados) => {
@@ -89,6 +109,9 @@ class Sinalizacao {
         if (c && c.ws) this._enviar(c.ws, m);
         return;
       }
+      case 'controle-estado': case 'controle-miniaturas':
+        this.controles.forEach((c) => this._enviar(c, m));
+        return;
       case 'mensagem': { // mensagem do operador para uma camera (ou todas)
         SLOTS.forEach((s) => {
           const c = this.slots[s];
@@ -214,4 +237,4 @@ class Sinalizacao {
   }
 }
 
-module.exports = { Sinalizacao, MAX_PENDENTES };
+module.exports = { Sinalizacao, MAX_PENDENTES, MAX_CONTROLES };

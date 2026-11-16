@@ -104,8 +104,30 @@ do Instagram (`rtmps://live-upload.instagram.com:443/rtmp/`) — copie a URL e a
 Os arquivos de mídia são entregues ao programa por `http://127.0.0.1:<porta>/midia/<token>/<id>` (só neste computador, só os
 arquivos que o operador adicionou). Isso é necessário para o mixer poder gravar e transmitir o que desenha.
 
+## Fase 3 (feita no computador, em 15/11/2026)
+
+| Item | Como usar | Onde |
+|------|-----------|------|
+| Logo, tarja e aviso | Coluna lateral, aba **Sobreposições**. Logo: “Escolher imagem”, canto, tamanho e opacidade. Tarja: duas linhas (nome e função). Aviso: faixa no alto da tela. Entram e saem com suavidade e valem para a gravação e para todos os destinos. | `app/sobreposicoes.js`, `app/ponte-fase3.js` |
+| Letras do Holyrics | **Configurações**: endereço do computador do Holyrics (IP ou IP:porta, padrão 8091) e o token do API Server. Depois ligue **Holyrics** na aba Sobreposições. A letra do slide atual aparece embaixo e some com tela preta/vazia. | `app/holyrics.js` |
+| Controle pelo tablet | **Configurações** > “Controle pelo tablet ou celular”: leia o QR code. O tablet escolhe a prévia, corta, faz transição, mexe no volume/mudo e liga logo, tarja e Holyrics. Não consegue iniciar nem encerrar a transmissão. | `app/ponte-controle.js`, `app/sinalizacao.js`, `app/servidor.js` |
+
+**Holyrics — o que precisa do lado dele:** em Arquivo > Configurações > API Server, ligue o servidor e crie um token com permissão
+para `GetCurrentPresentation` (documentação: https://github.com/holyrics/API-Server). O Holives consulta
+`POST http://IP:PORTA/api/GetCurrentPresentation?token=...` a cada 0,4 s. Limite do próprio Holyrics: para **versículos** ele não
+devolve o texto do slide, então só a referência (ex.: “João 3:16”) aparece.
+
+**Controle — segurança:** o endereço do QR code leva um código de 32 caracteres. Sem o código o tablet não conecta; “Gerar novo
+código” desliga quem estava conectado. No máximo 4 controles ao mesmo tempo. O mestre só aceita uma lista fixa de ações.
+
+Verificado neste Windows com `npm test` (28 testes) e com um teste de ponta a ponta usando um Holyrics simulado e um tablet
+simulado (navegador Edge): token errado/certo, troca de slide, tela preta, logo/tarja/aviso no vídeo, prévia/corte/transição/volume/
+mudo pelo tablet, ação proibida recusada, código errado recusado e código novo derrubando o tablet.
+**Não verificado:** um Holyrics de verdade (não está instalado neste computador) e um tablet de verdade.
+
 ## Pendências / próximos passos
-- Sobreposições (logo/tarja/texto), Holyrics, controle por tablet (`controle.html` não tem ponte).
+- Testar com o Holyrics real e ajustar se a resposta dele for diferente da documentação.
+- Lista de tarjas salvas, posição das letras (hoje sempre embaixo) e mensagem do operador para as câmeras.
 - Som da placa de captura (HDMI) e da tela do computador: hoje só entra a imagem.
 - Com destinos horizontais e verticais juntos há duas codificações ao mesmo tempo; medir a CPU com 4 câmeras reais.
 - “Testar conexão” do destino; reconexão automática do RTMP quando cai (hoje encerra e avisa).

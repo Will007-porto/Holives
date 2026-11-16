@@ -42,7 +42,10 @@
     <div class="linha" style="justify-content:space-between;padding:8px 0"><span>Holyrics</span><button type="button" class="switch" role="switch" aria-checked="true" aria-label="Holyrics" data-acao="sobreposicao-alternar" data-id="holyrics"></button></div>
   </aside>
 </main>
+<script>window.HolivesControleReal = location.protocol !== 'file:';</script>
 <script src="js/mock.js"></script>
 <script src="js/controle.js"></script>
+<!-- Ponte real: liga o controle ao mestre -->
+<script src="app/ponte-controle.js"></script>
 </body>
 </html>

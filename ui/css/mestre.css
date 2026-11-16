@@ -95,3 +95,14 @@ body.mestre{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
 .canal > .linha{display:flex;gap:4px}
 .canal > .linha .mini-btn{flex:1}
 .canal > div.small br{display:none}
+
+/* --- Fase 3: o nome da fonte sai de cima do video (escondia a tarja e as letras) e vai para o cabecalho --- */
+.monitor .cabecalho .small{display:none}
+.monitor .nome{left:auto;right:0;top:-3px;bottom:auto;padding:2px 8px;font-size:12px;max-width:62%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* coluna lateral sem rolagem para os lados */
+.lateral .conteudo{overflow-x:hidden}
+.lateral .card .linha{flex-wrap:wrap}
+.lateral input:not([type=range]):not([type=file]),.lateral select{width:100%;max-width:100%;min-width:0}
+.lateral input[type=range]{width:100%}
+.sobreposicao > div{min-width:0}
+.sobreposicao .switch{flex:none}

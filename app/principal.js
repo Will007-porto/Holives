@@ -9,6 +9,8 @@ const { obterCertificado, ipsLocais } = require('./certificado');
 const { criarServidor } = require('./servidor');
 const { GerenteFfmpeg } = require('./ffmpeg');
 const { Arquivos } = require('./arquivos');
+const crypto = require('crypto');
+const { Holyrics, lerEndereco } = require('./holyrics');
 
 const RAIZ = path.join(__dirname, '..');
 const PORTA_PADRAO = 8443;
@@ -27,6 +29,9 @@ let infoRede = null;
 let ffmpeg = null;
 const arquivos = new Arquivos();
 let telaEscolhida = '';
+let holyrics = null;
+let tokenHolyrics = '';   // em memoria quando o sistema nao tem cofre de senhas
+let tokenControle = '';
 
 // ---- configuracoes (pasta de dados do usuario; a chave de transmissao so e salva cifrada) ----
 function arquivoConfig() { return path.join(app.getPath('userData'), 'config.json'); }
@@ -82,6 +87,9 @@ function salvarConfig(novo) {
     });
     delete c.servidor; delete c.chaveCifrada;
   }
+  if (novo.sobre && typeof novo.sobre === 'object') c.sobre = novo.sobre;         // ja validado em 'holives:sobre-salvar'
+  if (novo.holyrics && typeof novo.holyrics === 'object') c.holyrics = novo.holyrics; // idem 'holives:holyrics-salvar'
+  if (typeof novo.controleToken === 'string' && /^[0-9a-f]{32}$/.test(novo.controleToken)) c.controleToken = novo.controleToken;
   if (Array.isArray(novo.midia)) c.midia = novo.midia.filter((x) => typeof x === 'string').slice(0, 200);
   if (novo.vertical && typeof novo.vertical === 'object') {
     c.vertical = {
@@ -157,6 +165,56 @@ function registrarIpc() {
     salvarConfig({ vertical: { topo: escolher(v.topo, atual.topo), base: escolher(v.base, atual.base), cor: v.cor, texto: v.texto } });
     return verticalPublico();
   });
+  // ---- sobreposicoes: logo, tarja, aviso e interruptor do Holyrics
+  const POSICOES = ['superior-direita', 'superior-esquerda', 'inferior-direita', 'inferior-esquerda'];
+  const num = (v, min, max, padrao) => { v = Math.round(Number(v)); return isFinite(v) ? Math.max(min, Math.min(max, v)) : padrao; };
+  const sobrePublico = () => {
+    const s = lerConfig().sobre || {};
+    const i = s.logoCaminho && arquivos.registrar(s.logoCaminho);
+    return {
+      logo: s.logo || null, tarja: s.tarja || null, texto: s.texto || null, holyrics: s.holyrics || null,
+      logoUrl: i && i.tipo === 'imagem' ? arquivos.publico(i, infoRede.portaLocal).url : ''
+    };
+  };
+  ipcMain.handle('holives:sobre-obter', (e) => (senderConfiavel(e) ? sobrePublico() : null));
+  ipcMain.handle('holives:sobre-salvar', (e, v) => {
+    if (!senderConfiavel(e) || !v || typeof v !== 'object') return null;
+    const antigo = lerConfig().sobre || {};
+    const l = v.logo || {}, t = v.tarja || {}, x = v.texto || {}, h = v.holyrics || {};
+    let logoCaminho = antigo.logoCaminho || '';
+    if (typeof v.logoCaminho === 'string') { const i = v.logoCaminho && arquivos.registrar(v.logoCaminho); logoCaminho = i && i.tipo === 'imagem' ? i.caminho : ''; }
+    salvarConfig({ sobre: {
+      logoCaminho,
+      logo: { ativa: !!l.ativa, posicao: POSICOES.includes(l.posicao) ? l.posicao : POSICOES[0], tamanho: num(l.tamanho, 40, 320, 96), opacidade: num(l.opacidade, 20, 100, 90) },
+      tarja: { linha1: String(t.linha1 || '').slice(0, 60), linha2: String(t.linha2 || '').slice(0, 60) },
+      texto: { conteudo: String(x.conteudo || '').slice(0, 140) },
+      holyrics: { mostrar: !!h.mostrar }
+    } });
+    return sobrePublico();
+  });
+  // ---- Holyrics (API Server): endereco e token
+  ipcMain.handle('holives:holyrics-obter', (e) => {
+    if (!senderConfiavel(e)) return null;
+    const h = lerConfig().holyrics || {};
+    return { endereco: h.endereco || '', token: decifrar(h.tokenCifrado) || tokenHolyrics };
+  });
+  ipcMain.handle('holives:holyrics-salvar', (e, v) => {
+    if (!senderConfiavel(e) || !v) return null;
+    const endereco = String(v.endereco || '').trim().slice(0, 260), token = String(v.token || '').trim().slice(0, 200);
+    if (endereco && !lerEndereco(endereco)) return { erro: 'Endereço do Holyrics inválido. Use o IP do computador, por exemplo 192.168.0.20:8091.' };
+    tokenHolyrics = token;
+    salvarConfig({ holyrics: { endereco, tokenCifrado: token && safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(token).toString('base64') : '' } });
+    holyrics.configurar(endereco, token);
+    return { ok: true };
+  });
+  // ---- controle pelo tablet: endereco com codigo de acesso
+  ipcMain.handle('holives:controle-qr', async (e, ip, novo) => {
+    if (!senderConfiavel(e) || !infoRede.ips.some((i) => i.ip === ip)) return null;
+    if (novo) { tokenControle = crypto.randomBytes(16).toString('hex'); salvarConfig({ controleToken: tokenControle }); servidor.sinal.derrubarControles(); }
+    const url = 'https://' + ip + ':' + infoRede.porta + '/controle?t=' + tokenControle;
+    return { url, imagem: await QRCode.toDataURL(url, { margin: 1, width: 300, errorCorrectionLevel: 'M' }) };
+  });
+
   // ---- captura de tela do computador
   ipcMain.handle('holives:telas', async (e) => {
     if (!senderConfiavel(e)) return [];
@@ -177,15 +235,18 @@ function registrarIpc() {
 
 async function iniciar() {
   const ips = N.ordenarIps(ipsLocais());
+  tokenControle = lerConfig().controleToken || '';
+  if (!/^[0-9a-f]{32}$/.test(tokenControle)) { tokenControle = crypto.randomBytes(16).toString('hex'); salvarConfig({ controleToken: tokenControle }); }
   const pastaCert = path.join(app.getPath('userData'), 'certificado');
   const cert = await obterCertificado(pastaCert, ips.map((i) => i.ip));
   servidor = criarServidor({
     cert: cert.cert, key: cert.key, porta: PORTA_PADRAO,
-    raizUi: path.join(RAIZ, 'ui'), raizApp: __dirname, arquivos
+    raizUi: path.join(RAIZ, 'ui'), raizApp: __dirname, arquivos, tokenControle: () => tokenControle
   });
   const portas = await servidor.iniciar();
   infoRede = { ips, porta: portas.porta, portaLocal: portas.portaLocal };
 
+  holyrics = new Holyrics((s) => { if (janela && !janela.isDestroyed()) janela.webContents.send('holives:holyrics', s); });
   ffmpeg = new GerenteFfmpeg((s) => { if (janela && !janela.isDestroyed()) janela.webContents.send('holives:ffmpeg-status', s); });
   registrarIpc();
 
@@ -214,6 +275,10 @@ async function iniciar() {
   janela.webContents.on('will-navigate', (ev, url) => { if (!url.startsWith('file://')) ev.preventDefault(); });
   janela.on('closed', () => { janela = null; });
   await janela.loadFile(path.join(RAIZ, 'ui', 'mestre.html'), { query: { ws: String(portas.portaLocal) } });
+  // o Holyrics comeca a ser consultado depois que a janela existe (para receber o estado)
+  const h = lerConfig().holyrics || {};
+  tokenHolyrics = decifrar(h.tokenCifrado);
+  setTimeout(() => { holyrics.ultimo = ''; holyrics.configurar(h.endereco || '', tokenHolyrics); }, 1500);
 }
 
 app.whenReady().then(iniciar).catch((e) => { console.error('Falha ao iniciar o Holives:', e); app.exit(1); });
@@ -226,5 +291,6 @@ app.on('before-quit', (ev) => {
     ev.preventDefault();
     ffmpeg.pararTudo().finally(() => { if (servidor) servidor.parar(); app.quit(); });
   } else if (servidor) servidor.parar();
+  if (holyrics) holyrics.parar();
 });
 app.on('second-instance', () => { if (janela) { if (janela.isMinimized()) janela.restore(); janela.focus(); } });

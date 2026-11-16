@@ -57,7 +57,7 @@ window.HolivesState = {
   cameraAtual: { nome: "Câmera do corredor", camera: "traseira", qualidade: "1080p", enviarAudio: true, estado: "conectada", tally: "previa" }
 };
 (function animar(){
-  if(window.holivesNativo) return; // no aplicativo real, a ponte (app/ponte.js) fornece os dados
+  if(window.holivesNativo || window.HolivesControleReal) return; // no aplicativo real, a ponte (app/ponte.js) fornece os dados
   var s = window.HolivesState;
   setInterval(function(){
     var t = s.transmissao;

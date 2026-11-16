@@ -19,6 +19,7 @@
   var ultimaPrevia = null;
   var ipAtual = '';
   var fase2 = null;            // fontes locais, midia e layout vertical (ponte-fase2.js)
+  var fase3 = null;            // sobreposicoes, Holyrics e controle pelo tablet (ponte-fase3.js)
   var destinos = [];           // {id, nome, servidor, chave, formato, ativo, estado}
   var grupos = { live: [], 'live-v': [] }; // destinos de cada codificacao em andamento
   var verticalEmUso = false;
@@ -183,7 +184,8 @@
         if (st.altura) f.resolucao = N.rotuloResolucao(st.altura);
         f.sinal = Math.max(0, Math.min(100, Math.round(100 - (st.perdaPct || 0) * 8)));
       },
-      aoErro: function (msg) { toast(msg, true); }
+      aoErro: function (msg) { toast(msg, true); },
+      aoOutro: function (m) { if (fase3) fase3.aoSinal(m); }
     });
     rtc.conectar();
   }
@@ -253,7 +255,6 @@
     if ((c = campoPor('Dispositivo de entrada da mesa'))) trocarPorSelect(c, 'cfg-entrada-mesa');
     if ((c = campoPor('Dispositivo de saída do fone'))) trocarPorSelect(c, 'cfg-saida-fone');
     if ((c = campoPor('Pasta de gravação'))) { var i = c.querySelector('input'); i.id = 'cfg-pasta'; i.value = cfg.pastaGravacao; }
-    if ((c = campoPor('Holyrics'))) { var h = c.querySelector('input'); h.disabled = true; h.title = 'Integração com o Holyrics: fase futura'; }
     if ((c = campoPor('Rede'))) {
       var sel = trocarPorSelect(c, 'cfg-ip');
       info.ips.forEach(function (x) { sel.appendChild(opcao(x.ip, x.ip + ' (' + x.nome + ')', x.ip === ipAtual)); });
@@ -605,6 +606,16 @@
     }
 
     criarRtc();
+    if (window.HolivesFase3) {
+      fase3 = window.HolivesFase3.iniciar({
+        S: S, N: N, nativo: nativo, cfg: cfg, mixer: mixer, toast: toast, rerender: rerender,
+        fonte: fonte, canal: canal, campoPor: campoPor, lidar: lidar,
+        programa: function () { return programaAlvo; },
+        ipAtual: function () { return ipAtual; },
+        enviarSinal: function (o) { rtc.enviar(o); },
+        elementoFonte: function (id) { return id === 'midia' ? (fase2 ? fase2.midia.desenhavel() : null) : videosFonte[id]; }
+      });
+    }
     ligarEventos();
     if (cfg.entradaMesaId) { var r = await mesa.definirEntradaMesa(cfg.entradaMesaId); if (!r.ok) toast(r.erro, true); }
     if (cfg.saidaFoneId) mesa.definirSaidaFone(cfg.saidaFoneId);

@@ -8,6 +8,7 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const { Sinalizacao } = require('./sinalizacao');
 
@@ -18,15 +19,16 @@ const TIPOS = {
 
 // Somente estes caminhos sao publicados na rede. O mestre (mestre.html) nunca e servido.
 function caminhoPermitido(rel) {
-  return rel === 'camera.html' || /^css\/[\w.-]+\.css$/.test(rel) ||
-    rel === 'js/mock.js' || rel === 'js/camera.js' ||
-    rel === 'app/ponte-camera.js' || rel === 'app/nucleo.js';
+  return rel === 'camera.html' || rel === 'controle.html' || /^css\/[\w.-]+\.css$/.test(rel) ||
+    rel === 'js/mock.js' || rel === 'js/camera.js' || rel === 'js/controle.js' ||
+    rel === 'app/ponte-camera.js' || rel === 'app/ponte-controle.js' || rel === 'app/nucleo.js';
 }
 
 function resolverArquivo(raizUi, raizApp, urlPath) {
   let p;
   try { p = decodeURIComponent(urlPath.split('?')[0]); } catch (e) { return null; }
   if (p === '/camera' || p === '/camera/' || p === '/') p = '/camera.html';
+  if (p === '/controle' || p === '/controle/') p = '/controle.html';
   const rel = path.posix.normalize(p).replace(/^\/+/, '');
   if (rel.indexOf('..') >= 0 || !caminhoPermitido(rel)) return null;
   const base = rel.startsWith('app/') ? path.dirname(raizApp) : raizUi;
@@ -58,7 +60,20 @@ function criarServidor(opcoes) {
     : https.createServer({ cert: opcoes.cert, key: opcoes.key }, manipulador);
   const wssCameras = new WebSocketServer({ noServer: true, maxPayload: 256 * 1024 });
   servidorCameras.on('upgrade', (req, socket, head) => {
-    if ((req.url || '').split('?')[0] !== '/ws') { socket.destroy(); return; }
+    const partes = (req.url || '').split('?');
+    if (partes[0] === '/ws-controle') {
+      // controle remoto: exige o codigo que o mestre mostra no QR code
+      const dado = new URLSearchParams(partes[1] || '').get('t') || '';
+      const certo = typeof opcoes.tokenControle === 'function' ? String(opcoes.tokenControle() || '') : '';
+      const a = Buffer.from(dado), b = Buffer.from(certo);
+      const ok = certo.length >= 16 && a.length === b.length && crypto.timingSafeEqual(a, b);
+      wssCameras.handleUpgrade(req, socket, head, (ws) => {
+        if (!ok) { try { ws.close(4403, 'codigo invalido'); } catch (e) { /* */ } return; }
+        sinal.conectar(ws, 'controle');
+      });
+      return;
+    }
+    if (partes[0] !== '/ws') { socket.destroy(); return; }
     wssCameras.handleUpgrade(req, socket, head, (ws) => sinal.conectar(ws, 'camera'));
   });
 

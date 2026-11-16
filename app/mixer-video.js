@@ -63,7 +63,13 @@
     c.globalAlpha = 1;
   };
 
+  /** Um quadro completo: programa (com transicao) e, por cima, as sobreposicoes. */
   MixerVideo.prototype.desenhar = function () {
+    this._programa();
+    if (this.aoDesenhar) { try { this.aoDesenhar(this.ctx, this.largura, this.altura); } catch (e) { /* uma sobreposicao com erro nao pode parar o video */ } }
+  };
+
+  MixerVideo.prototype._programa = function () {
     this._pintarPreto();
     var t = this.transicao;
     if (!t) { this._desenharFonte(this.programaId, 1); return; }

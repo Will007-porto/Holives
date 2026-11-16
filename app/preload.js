@@ -20,5 +20,11 @@ contextBridge.exposeInMainWorld('holivesNativo', {
   verticalSalvar: (v) => ipcRenderer.invoke('holives:vertical-salvar', v),
   telas: () => ipcRenderer.invoke('holives:telas'),
   telaEscolher: (id) => ipcRenderer.invoke('holives:tela-escolher', id),
+  sobreObter: () => ipcRenderer.invoke('holives:sobre-obter'),
+  sobreSalvar: (v) => ipcRenderer.invoke('holives:sobre-salvar', v),
+  holyricsObter: () => ipcRenderer.invoke('holives:holyrics-obter'),
+  holyricsSalvar: (v) => ipcRenderer.invoke('holives:holyrics-salvar', v),
+  aoHolyrics: (fn) => ipcRenderer.on('holives:holyrics', (_e, s) => fn(s)),
+  controleQr: (ip, novo) => ipcRenderer.invoke('holives:controle-qr', ip, novo),
   aoStatusFfmpeg: (fn) => ipcRenderer.on('holives:ffmpeg-status', (_e, s) => fn(s))
 });
