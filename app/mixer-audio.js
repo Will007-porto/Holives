@@ -58,6 +58,13 @@
     }
   };
 
+  /** Liga o som de um elemento <video> (tela de midia) a um canal. So pode ser chamado uma vez por elemento. */
+  Mesa.prototype.definirFonteElemento = function (id, elemento) {
+    var c = this.canais[id]; if (!c || c.fonte) return;
+    c.fonte = this.ctx.createMediaElementSource(elemento);
+    c.fonte.connect(c.fader);
+  };
+
   /** Abre a interface de audio escolhida. deviceId '' = desligada. */
   Mesa.prototype.definirEntradaMesa = async function (deviceId) {
     if (this.entradaMesa) {
@@ -107,7 +114,9 @@
       // fader e mudo
       k.fader.gain.setTargetAtTime(c.mudo ? 0 : N.dbParaLinear(c.volume), t, tc);
       // "seguir video": camera so soa quando esta no ar
-      var segue = (c.seguirVideo && N.SLOTS.indexOf(c.id) >= 0) ? (c.id === noArId ? 1 : 0) : 1;
+      // o som da midia tambem so vai para a live quando a tela de midia esta no ar
+      var segue = c.id === 'midia' ? (noArId === 'midia' ? 1 : 0)
+        : (c.seguirVideo && N.SLOTS.indexOf(c.id) >= 0) ? (c.id === noArId ? 1 : 0) : 1;
       k.seguir.gain.setTargetAtTime(segue, t, constante || CONST_TEMPO);
       k.ouvir.gain.setTargetAtTime(c.ouvir ? 1 : 0, t, tc);
     });

@@ -17,6 +17,12 @@ function dataParaNome(d) {
   return d.getFullYear() + z(d.getMonth() + 1) + z(d.getDate()) + '-' + z(d.getHours()) + z(d.getMinutes()) + z(d.getSeconds());
 }
 
+function redigir(texto, chaves) {
+  let t = String(texto == null ? '' : texto);
+  [].concat(chaves || []).forEach((c) => { t = N.redigirChave(t, c); });
+  return N.redigirChave(t, '');
+}
+
 class GerenteFfmpeg {
   constructor(aoStatus, binario) {
     this.aoStatus = aoStatus || function () {};
@@ -24,16 +30,21 @@ class GerenteFfmpeg {
     this.jobs = new Map();
   }
 
-  /** opcoes: {job:'gravacao'|'live', mime, fps, kbps, pasta, servidor, chave} */
+  /** opcoes: {job:'gravacao'|'live'|'live-v', mime, fps, kbps, pasta, servidor, chave, destinos:[{servidor,chave}]}
+   *  "live" = destinos horizontais; "live-v" = destinos verticais (Instagram). Cada um tem a sua codificacao. */
   async iniciar(o) {
-    if (o.job !== 'gravacao' && o.job !== 'live') return { ok: false, erro: 'Tarefa inválida.' };
+    if (o.job !== 'gravacao' && o.job !== 'live' && o.job !== 'live-v') return { ok: false, erro: 'Tarefa inválida.' };
     if (this.jobs.has(o.job)) return { ok: false, erro: 'Já está em andamento.' };
-    let args, chave = '', caminho = null;
-    if (o.job === 'live') {
-      const r = N.montarUrlRtmp(o.servidor, o.chave);
-      if (!r.ok) return { ok: false, erro: r.erro };
-      chave = String(o.chave).trim();
-      args = N.argsFfmpeg({ tipo: 'rtmp', mime: o.mime, url: r.url, kbps: Number(o.kbps) || 4500, fps: Number(o.fps) || 30 });
+    let args, chave = [], caminho = null;
+    if (o.job !== 'gravacao') {
+      const lista = Array.isArray(o.destinos) && o.destinos.length ? o.destinos.slice(0, 8) : [{ servidor: o.servidor, chave: o.chave }];
+      const urls = [];
+      for (const d of lista) {
+        const r = N.montarUrlRtmp(d && d.servidor, d && d.chave);
+        if (!r.ok) return { ok: false, erro: r.erro };
+        urls.push(r.url); chave.push(String(d.chave).trim());
+      }
+      args = N.argsFfmpeg({ tipo: 'rtmp', mime: o.mime, urls, kbps: Number(o.kbps) || 4500, fps: Number(o.fps) || 30 });
     } else {
       try {
         const pasta = path.resolve(String(o.pasta || ''));
@@ -53,7 +64,7 @@ class GerenteFfmpeg {
       proc.once('error', (e) => {
         this.jobs.delete(o.job);
         if (!job.resolvido) { job.resolvido = true; resolve({ ok: false, erro: 'Falha ao executar o ffmpeg: ' + e.message }); }
-        else this.aoStatus({ job: o.job, estado: 'erro', mensagem: N.redigirChave(e.message, chave) });
+        else this.aoStatus({ job: o.job, estado: 'erro', mensagem: redigir(e.message, chave) });
       });
       proc.stdin.on('error', () => { /* ffmpeg fechou o pipe: o evento "close" informa */ });
       proc.stderr.on('data', (buf) => {
@@ -61,7 +72,11 @@ class GerenteFfmpeg {
           if (!linha.trim()) return;
           const p = N.parseProgressoFfmpeg(linha);
           if (p) this.aoStatus({ job: o.job, estado: 'progresso', progresso: p });
-          else { job.ultimas.push(N.redigirChave(linha, chave)); if (job.ultimas.length > 12) job.ultimas.shift(); }
+          else {
+            const caiu = N.parseFalhaTee(linha);
+            if (caiu >= 0) this.aoStatus({ job: o.job, estado: 'destino-falhou', indice: caiu });
+            job.ultimas.push(redigir(linha, chave)); if (job.ultimas.length > 12) job.ultimas.shift();
+          }
         });
       });
       proc.once('close', (codigo) => {

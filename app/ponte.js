@@ -18,6 +18,16 @@
   var programaAlvo = 'cam1';
   var ultimaPrevia = null;
   var ipAtual = '';
+  var fase2 = null;            // fontes locais, midia e layout vertical (ponte-fase2.js)
+  var destinos = [];           // {id, nome, servidor, chave, formato, ativo, estado}
+  var grupos = { live: [], 'live-v': [] }; // destinos de cada codificacao em andamento
+  var verticalEmUso = false;
+  var EXTRAS = [
+    { id: 'webcam', tipo: 'webcam', nome: 'Câmera do computador' },
+    { id: 'captura', tipo: 'captura', nome: 'Datashow' },
+    { id: 'tela', tipo: 'tela', nome: 'Tela do computador' },
+    { id: 'midia', tipo: 'midia', nome: 'Tela de mídia' }
+  ];
 
   function $(id) { return document.getElementById(id); }
   function rerender() { if (window.HolivesRenderMestre) window.HolivesRenderMestre(); }
@@ -39,14 +49,18 @@
   function zerarEstado() {
     S.fontes = SLOTS.map(function (id, i) {
       return { id: id, tipo: 'camera', nome: 'Câmera ' + (i + 1), estado: 'sem-sinal', bateria: null, sinal: 0, resolucao: '—', temAudio: false };
-    });
+    }).concat(EXTRAS.map(function (x) {
+      return { id: x.id, tipo: x.tipo, nome: x.nome, estado: 'sem-sinal', bateria: null, sinal: 0, resolucao: '—', temAudio: false };
+    }));
     S.previaId = 'cam2'; S.noArId = 'cam1'; programaAlvo = 'cam1';
     S.cenario = 'primeiro-uso';
     S.transmissao = { estado: 'offline', inicio: null, kbps: 0, fps: cfg.fps, quadrosPerdidos: 0, cpu: 0 };
     S.gravacao = { ativa: false, inicio: null };
     S.aguardando = [];
-    S.destinos.forEach(function (d, i) { d.estado = 'desligado'; d.chave = ''; });
-    S.destinos[0].servidor = cfg.destino.servidor;
+    destinos = cfg.destinos.map(function (d) {
+      return { id: d.id, nome: d.nome, servidor: d.servidor, chave: d.chave, formato: d.formato, ativo: d.ativo, estado: 'desligado' };
+    });
+    recalcularDestinos();
     S.sobreposicoes.holyrics.conexao = 'não configurado';
     S.config.pastaGravacao = cfg.pastaGravacao; S.config.ipMestre = ''; S.config.porta = info.porta;
     S.config.resolucao = cfg.resolucao; S.config.fps = cfg.fps;
@@ -72,8 +86,6 @@
     else novo = wsOk[slot] ? 'conectando' : 'sem-sinal';
     f.estado = novo;
     if (novo === 'sem-sinal') { f.sinal = 0; }
-    var algum = SLOTS.some(function (s) { return ativos[s]; });
-    S.cenario = algum || Object.keys(pendentes).length ? 'pronto' : 'primeiro-uso';
     if (antes !== novo) { rerender(); atualizarMonitores(); }
   }
 
@@ -265,29 +277,76 @@
     if (p) { p.innerHTML = ''; var st = document.createElement('strong'); st.textContent = 'Endereço:'; p.appendChild(st); p.appendChild(document.createElement('br')); p.appendChild(document.createTextNode(r.url)); }
   }
 
-  function lerDestino() {
-    var card = document.querySelector('#modal-destinos .destino-card');
-    var ins = card.querySelectorAll('input'), sw = card.querySelector('.switch');
-    return { servidor: ins[0].value.trim(), chave: ins[1].value.trim(), ativo: sw.getAttribute('aria-checked') === 'true' };
-  }
-  function preencherDestino() {
-    var card = document.querySelector('#modal-destinos .destino-card'), ins = card.querySelectorAll('input');
-    ins[0].value = cfg.destino.servidor; ins[1].value = cfg.destino.chave; // a chave so vem do cofre do sistema, nunca do codigo
-    ins[1].autocomplete = 'off';
-    document.querySelectorAll('#modal-destinos .destino-card').forEach(function (cd, i) {
-      if (i > 0) { var x = cd.querySelectorAll('input'); x.forEach(function (inp) { if (inp.type === 'password') inp.value = ''; }); }
+  // ---------------------------------------------------------------- destinos (varios ao mesmo tempo)
+  var FIXOS = ['youtube', 'facebook', 'instagram'];
+  var DICAS = {
+    youtube: 'No YouTube Studio: Criar > Transmitir ao vivo > copie a "Chave de transmissão".',
+    facebook: 'No Facebook: Vídeo ao vivo > Software de streaming > copie a "Chave de stream".',
+    instagram: 'No Instagram pelo computador (conta profissional): Criar > Vídeo ao vivo > copie a URL e a chave. Sempre vertical 9:16.'
+  };
+  function aoVivo() { return gravador && (gravador.estaAtivo('live') || gravador.estaAtivo('live-v')); }
+  /** Estado de cada destino fora do ar: "pronto" se ligado e com chave. Nao mexe em quem esta ao vivo/erro durante a live. */
+  function recalcularDestinos() {
+    var vivo = aoVivo();
+    destinos.forEach(function (d) {
+      if (vivo && (d.estado === 'ao-vivo' || d.estado === 'erro')) return;
+      d.estado = d.ativo && d.chave && d.servidor ? 'pronto' : 'desligado';
     });
-    var cs = document.querySelectorAll('#modal-destinos .destino-card .switch');
-    if (cs[0]) cs[0].setAttribute('aria-checked', 'true');
-    if (cs[1]) cs[1].setAttribute('aria-checked', 'false');
-    if (cs[2]) cs[2].setAttribute('aria-checked', 'false');
-    var aviso = document.createElement('p'); aviso.className = 'small muted';
-    aviso.textContent = 'Fase 1: apenas o primeiro destino (YouTube) transmite. Facebook, Instagram e destinos extras vêm em fase futura.';
-    card.parentElement.insertBefore(aviso, card);
+    S.destinos = destinos.map(function (d) { return { id: d.id, nome: d.nome, estado: d.estado, formato: d.formato }; });
   }
-  function atualizarEstadoDestino() {
-    var d = lerDestino();
-    S.destinos[0].estado = S.transmissao.estado === 'ao-vivo' ? 'ao-vivo' : (d.ativo && d.chave ? 'pronto' : 'desligado');
+  function elemento(tag, classe, texto) { var e = document.createElement(tag); if (classe) e.className = classe; if (texto) e.textContent = texto; return e; }
+
+  function renderDestinos() {
+    var caixa = document.querySelector('#modal-destinos .modal-caixa'); if (!caixa) return;
+    caixa.querySelectorAll('.destino-card, .aviso-destinos').forEach(function (x) { x.remove(); });
+    var ancora = caixa.querySelector('[data-acao="destino-adicionar"]');
+    var aviso = elemento('p', 'small muted aviso-destinos', 'Ligue os destinos que vão receber a live. Todos os ligados transmitem ao mesmo tempo. As chaves ficam guardadas cifradas neste computador.');
+    aviso.style.marginBottom = '12px';
+    caixa.insertBefore(aviso, ancora);
+    destinos.forEach(function (d) {
+      var fixo = FIXOS.indexOf(d.id) >= 0;
+      var card = elemento('div', 'destino-card'); card.dataset.destinoId = d.id;
+      var topo = elemento('div', 'linha'); topo.style.justifyContent = 'space-between';
+      if (fixo) topo.appendChild(elemento('strong', '', d.nome + (d.id === 'instagram' ? ' — sempre vertical' : '')));
+      else { var nome = elemento('input'); nome.dataset.campo = 'nome'; nome.value = d.nome; nome.maxLength = 40; nome.setAttribute('aria-label', 'Nome do destino'); nome.style.maxWidth = '260px'; topo.appendChild(nome); }
+      var lado = elemento('span', 'linha');
+      if (!fixo) { var rm = elemento('button', 'btn', 'Remover'); rm.type = 'button'; rm.dataset.acao = 'destino-remover'; lado.appendChild(rm); }
+      var sw = elemento('button', 'switch'); sw.type = 'button'; sw.setAttribute('role', 'switch'); sw.setAttribute('aria-checked', String(!!d.ativo));
+      sw.setAttribute('aria-label', 'Ativar ' + d.nome); sw.dataset.acao = 'destino-ligar';
+      lado.appendChild(sw); topo.appendChild(lado); card.appendChild(topo);
+      [['servidor', 'Endereço do servidor', 'text'], ['chave', 'Chave de transmissão', 'password']].forEach(function (c) {
+        var campo = elemento('div', 'campo'), id = 'dest-' + d.id + '-' + c[0];
+        var l = elemento('label', '', c[1]); l.htmlFor = id;
+        var i = elemento('input'); i.id = id; i.type = c[2]; i.dataset.campo = c[0]; i.value = d[c[0]] || ''; i.autocomplete = 'off'; i.spellcheck = false;
+        if (c[0] === 'servidor') i.placeholder = 'rtmp:// ou rtmps://';
+        campo.appendChild(l); campo.appendChild(i); card.appendChild(campo);
+      });
+      if (d.id !== 'instagram') {
+        var linha = elemento('div', 'linha'), sel = elemento('select'); sel.dataset.campo = 'formato'; sel.setAttribute('aria-label', 'Formato de ' + d.nome);
+        sel.appendChild(opcao('horizontal', 'Horizontal 16:9', d.formato !== 'vertical')); sel.appendChild(opcao('vertical', 'Vertical 9:16', d.formato === 'vertical'));
+        linha.appendChild(sel); card.appendChild(linha);
+      }
+      if (DICAS[d.id]) card.appendChild(elemento('p', 'small muted', DICAS[d.id]));
+      caixa.insertBefore(card, ancora);
+    });
+  }
+  /** Passa o que esta digitado na janela para a lista de destinos. */
+  function lerDestinosDoModal() {
+    document.querySelectorAll('#modal-destinos .destino-card').forEach(function (card) {
+      var d = destinos.find(function (x) { return x.id === card.dataset.destinoId; }); if (!d) return;
+      var v = function (c) { var e = card.querySelector('[data-campo="' + c + '"]'); return e ? e.value.trim() : null; };
+      d.servidor = v('servidor') || ''; d.chave = v('chave') || '';
+      if (v('nome') !== null) d.nome = v('nome') || 'Destino extra';
+      d.formato = d.id === 'instagram' ? 'vertical' : (v('formato') === 'vertical' ? 'vertical' : 'horizontal');
+      d.ativo = card.querySelector('.switch').getAttribute('aria-checked') === 'true';
+    });
+  }
+  function salvarDestinos() {
+    lerDestinosDoModal();
+    nativo.configSalvar({ destinos: destinos.map(function (d) { return { id: d.id, nome: d.nome, servidor: d.servidor, chave: d.chave, formato: d.formato, ativo: d.ativo }; }) });
+    recalcularDestinos(); rerender();
+    if (destinos.some(function (d) { return d.chave; }) && !cfg.podeGuardarChave) toast('Este sistema não tem cofre de senhas: as chaves não serão lembradas ao fechar.');
+    if (aoVivo()) toast('As mudanças nos destinos valem a partir da próxima transmissão.');
   }
 
   function aplicarVideoCfg() {
@@ -318,28 +377,69 @@
   }
   function kbpsVideo() { return (cfg.resolucao === '720p' ? 4000 : 6000) * (cfg.fps === 60 ? 1.5 : 1); }
 
+  function streamVertical() {
+    return new MediaStream([].concat(fase2.vertical.stream.getVideoTracks(), mesa.destino.stream.getAudioTracks()));
+  }
+  function soltarVertical() { if (verticalEmUso) { verticalEmUso = false; fase2.vertical.soltar(); } }
+  function marcarGrupo(job, estado) { grupos[job].forEach(function (d) { d.estado = estado; }); }
+
   function falhaLive(msg) {
-    S.transmissao.estado = 'offline'; S.transmissao.kbps = 0; atualizarEstadoDestino();
-    if (S.destinos[0].estado !== 'desligado') S.destinos[0].estado = 'erro';
+    S.transmissao.estado = 'offline'; S.transmissao.kbps = 0;
+    grupos.live = []; grupos['live-v'] = []; soltarVertical();
+    recalcularDestinos();
     toast(msg, true); rerender();
   }
   function falhaGravacao(msg) { S.gravacao.ativa = false; toast(msg, true); rerender(); }
 
   async function iniciarLive() {
-    if (gravador.estaAtivo('live')) return;
-    var d = lerDestino(), v = N.montarUrlRtmp(d.servidor, d.chave);
-    if (!d.ativo) { abrirModal('modal-destinos'); return falhaLive('O destino YouTube está desligado. Ative-o em Destinos.'); }
-    if (!v.ok) { abrirModal('modal-destinos'); return falhaLive(v.erro); }
+    if (aoVivo()) return;
+    var ligados = destinos.filter(function (d) { return d.ativo; });
+    if (!ligados.length) { abrirModal('modal-destinos'); return falhaLive('Nenhum destino está ligado. Ative pelo menos um em Destinos.'); }
+    for (var i = 0; i < ligados.length; i++) {
+      var v = N.montarUrlRtmp(ligados[i].servidor, ligados[i].chave);
+      if (!v.ok) { abrirModal('modal-destinos'); return falhaLive(ligados[i].nome + ': ' + v.erro); }
+    }
+    var hor = ligados.filter(function (d) { return d.formato !== 'vertical'; });
+    var ver = ligados.filter(function (d) { return d.formato === 'vertical'; });
+    var paraFfmpeg = function (l) { return l.map(function (d) { return { servidor: d.servidor, chave: d.chave }; }); };
     await mesa.retomar(); aplicarVideoCfg();
-    var r = await gravador.iniciar('live', streamMisto(), { fps: cfg.fps, kbps: kbpsVideo(), servidor: d.servidor, chave: d.chave });
-    if (!r.ok) return falhaLive(r.erro);
-    S.transmissao.estado = 'ao-vivo'; S.destinos[0].estado = 'ao-vivo'; rerender();
+    var erros = [], algum = false, r;
+    if (hor.length) {
+      r = await gravador.iniciar('live', streamMisto(), { fps: cfg.fps, kbps: kbpsVideo(), destinos: paraFfmpeg(hor) });
+      grupos.live = hor;
+      if (r.ok) { marcarGrupo('live', 'ao-vivo'); algum = true; } else { marcarGrupo('live', 'erro'); grupos.live = []; erros.push(r.erro); }
+    }
+    if (ver.length) {
+      verticalEmUso = true; fase2.vertical.usar();
+      // 720x1280 a 30 quadros: o que o Instagram aceita
+      r = await gravador.iniciar('live-v', streamVertical(), { fps: 30, kbps: 3500, destinos: paraFfmpeg(ver) });
+      grupos['live-v'] = ver;
+      if (r.ok) { marcarGrupo('live-v', 'ao-vivo'); algum = true; } else { marcarGrupo('live-v', 'erro'); grupos['live-v'] = []; soltarVertical(); erros.push(r.erro); }
+    }
+    if (!algum) return falhaLive(erros.join(' '));
+    S.transmissao.estado = 'ao-vivo'; recalcularDestinos(); rerender();
+    if (erros.length) toast('Parte dos destinos não iniciou: ' + erros.join(' '), true);
   }
 
   async function encerrarLive() {
-    await gravador.parar('live');
+    await Promise.all([gravador.parar('live'), gravador.parar('live-v')]);
+    grupos.live = []; grupos['live-v'] = []; soltarVertical();
     if (gravador.estaAtivo('gravacao')) { await gravador.parar('gravacao'); S.gravacao.ativa = false; }
-    S.transmissao.estado = 'offline'; S.transmissao.kbps = 0; atualizarEstadoDestino(); rerender();
+    S.transmissao.estado = 'offline'; S.transmissao.kbps = 0;
+    destinos.forEach(function (d) { d.estado = 'desligado'; }); recalcularDestinos(); rerender();
+  }
+
+  /** Uma das codificacoes (horizontal ou vertical) caiu inteira. */
+  function quedaDeGrupo(job, mensagem) {
+    var nomes = grupos[job].map(function (d) { return d.nome; }).join(', ');
+    gravador.parar(job);
+    marcarGrupo(job, 'erro'); grupos[job] = [];
+    if (job === 'live-v') soltarVertical();
+    var outro = job === 'live' ? 'live-v' : 'live';
+    if (gravador.estaAtivo(outro) && grupos[outro].length) {
+      S.destinos = destinos.map(function (d) { return { id: d.id, nome: d.nome, estado: d.estado, formato: d.formato }; });
+      toast(nomes + ' caiu. Os outros destinos continuam no ar. ' + (mensagem || ''), true); rerender();
+    } else falhaLive('A transmissão caiu (' + nomes + '). ' + (mensagem || ''));
   }
 
   async function iniciarGravacao() {
@@ -351,13 +451,23 @@
   }
 
   nativo.aoStatusFfmpeg(function (s) {
-    if (s.job === 'live' && s.estado === 'progresso') {
+    var ehLive = s.job === 'live' || s.job === 'live-v';
+    if (ehLive && s.estado === 'progresso') {
+      // os indicadores do topo mostram a codificacao horizontal; a vertical so quando e a unica
+      if (s.job === 'live-v' && gravador.estaAtivo('live')) return;
       var p = s.progresso;
       if (typeof p.kbps === 'number') S.transmissao.kbps = p.kbps;
       if (typeof p.fps === 'number') S.transmissao.fps = Math.round(p.fps);
       if (p.quadros) S.transmissao.quadrosPerdidos = 100 * (p.perdidos || 0) / p.quadros;
+    } else if (ehLive && s.estado === 'destino-falhou') {
+      var caiu = grupos[s.job][s.indice];
+      if (caiu && caiu.estado !== 'erro') {
+        caiu.estado = 'erro';
+        S.destinos = destinos.map(function (d) { return { id: d.id, nome: d.nome, estado: d.estado, formato: d.formato }; });
+        toast(caiu.nome + ' caiu. Os outros destinos continuam no ar.', true); rerender();
+      }
     } else if (s.estado === 'erro') {
-      if (s.job === 'live') { gravador.parar('live'); falhaLive('A transmissão caiu. ' + (s.mensagem || '')); }
+      if (ehLive) { if (grupos[s.job].length) quedaDeGrupo(s.job, s.mensagem); }
       else { gravador.parar('gravacao'); falhaGravacao('A gravação parou com erro. ' + (s.mensagem || '')); }
     } else if (s.estado === 'encerrado' && s.job === 'gravacao' && s.caminho) {
       toast('Gravação salva em: ' + s.caminho);
@@ -368,16 +478,21 @@
   function lidar(d) {
     switch (d.tipo) {
       case 'cortar': {
-        var alvo = d.fonteId || S.previaId;
+        var alvo = d.fonteId || S.previaId, antesC = programaAlvo;
         programaAlvo = alvo; mixer.cortar(alvo); S.noArId = alvo;
-        aplicarAudio(0.01); enviarTally(); break;
+        aplicarAudio(0.01); enviarTally();
+        if (fase2 && antesC !== alvo) fase2.aoMudarPrograma(antesC, alvo);
+        break;
       }
       case 'transicao': {
         var dur = S.transicao.duracao || 500, alvoT = S.previaId;
         if (alvoT === programaAlvo) break;
+        var antesT = programaAlvo;
         programaAlvo = alvoT;
         mixer.transicionar(alvoT, d.estilo || S.transicao.tipo, dur);
-        aplicarAudio(Math.max(0.02, dur / 3000)); enviarTally(); break;
+        aplicarAudio(Math.max(0.02, dur / 3000)); enviarTally();
+        if (fase2) fase2.aoMudarPrograma(antesT, alvoT);
+        break;
       }
       case 'audio-volume':
         if (d.preset) aplicarPreset(d.preset);
@@ -391,13 +506,6 @@
       case 'iniciar-gravacao': iniciarGravacao(); break;
       case 'parar-gravacao': gravador.parar('gravacao'); break;
       case 'config-salvar': salvarConfig(); break;
-      case 'destino-salvar': {
-        var dd = lerDestino();
-        nativo.configSalvar({ destino: { servidor: dd.servidor, chave: dd.chave } });
-        atualizarEstadoDestino(); rerender();
-        if (dd.chave && !cfg.podeGuardarChave) toast('Este sistema não tem cofre de senhas: a chave não será lembrada ao fechar.');
-        break;
-      }
       default: break;
     }
   }
@@ -411,11 +519,20 @@
       if (b.dataset.acao === 'audio-ouvir') {
         var c = canal(b.dataset.fonteId); if (c) { c.ouvir = !c.ouvir; aplicarAudio(); rerender(); }
       }
-      if (b.dataset.acao === 'destino-alternar') {
-        b.setAttribute('aria-checked', String(b.getAttribute('aria-checked') !== 'true')); atualizarEstadoDestino(); rerender();
+      if (b.dataset.acao === 'destino-ligar') b.setAttribute('aria-checked', String(b.getAttribute('aria-checked') !== 'true'));
+      if (b.dataset.acao === 'destino-adicionar') {
+        lerDestinosDoModal();
+        if (destinos.length >= 8) toast('O limite é de 8 destinos.', true);
+        else { destinos.push({ id: 'extra' + Date.now(), nome: 'Destino extra', servidor: '', chave: '', formato: 'horizontal', ativo: true, estado: 'desligado' }); renderDestinos(); }
       }
+      if (b.dataset.acao === 'destino-remover') {
+        lerDestinosDoModal();
+        var idRm = b.closest('.destino-card').dataset.destinoId;
+        destinos = destinos.filter(function (x) { return x.id !== idRm; }); renderDestinos();
+      }
+      if (b.dataset.acao === 'abrir-destinos') renderDestinos();
+      if (b.dataset.acao === 'destino-salvar' && b.closest('#modal-destinos')) salvarDestinos();
       if (b.dataset.acao === 'abrir-config') listarDispositivos(true);
-      if (b.dataset.acao === 'testar-destino') toast('Teste de conexão ainda não existe: use "Iniciar transmissão".');
       if (b.dataset.acao === 'camera-adicionar' || b.closest('#lista-fontes') && b.classList.contains('vazio')) { renderPendentes(); }
       mesa.retomar();
     });
@@ -431,6 +548,9 @@
     setInterval(function () {
       if (S.previaId !== ultimaPrevia) { ultimaPrevia = S.previaId; atualizarMonitores(); if (rtc) enviarTally(); }
       if (S.noArId !== programaAlvo) { S.noArId = programaAlvo; rerender(); }
+      // o guia de primeiro uso some assim que qualquer fonte (camera, webcam, tela, midia) tem sinal
+      var cen = (S.fontes.some(function (f) { return f.estado === 'conectada'; }) || Object.keys(pendentes).length || SLOTS.some(function (x) { return ativos[x]; })) ? 'pronto' : 'primeiro-uso';
+      if (cen !== S.cenario) { S.cenario = cen; rerender(); }
     }, 100);
     setInterval(atualizarMedidores, 80);
     setInterval(async function () { S.transmissao.cpu = await nativo.cpu(); }, 2000);
@@ -468,9 +588,21 @@
     }
     renderPendentes();
     ipAtual = (info.ips.find(function (x) { return x.ip === cfg.ipEscolhido; }) || info.ips[0] || {}).ip || '';
-    prepararConfig(); preencherDestino(); atualizarEstadoDestino();
+    prepararConfig(); renderDestinos();
     await listarDispositivos(false);
     if (ipAtual) await definirIp(ipAtual); else { var q = document.querySelector('#modal-camera .qr'); if (q) q.textContent = 'Sem rede'; }
+
+    // fontes locais, tela de midia e layout vertical
+    if (window.HolivesFase2) {
+      fase2 = window.HolivesFase2.iniciar({
+        S: S, N: N, nativo: nativo, cfg: cfg, mixer: mixer, mesa: mesa, streams: streams,
+        toast: toast, rerender: rerender, fonte: fonte, canal: canal, campoPor: campoPor, opcao: opcao,
+        aoStream: aoStream, iniciarFonteVideo: iniciarFonteVideo, anexarCartoes: anexarCartoes, atualizarMonitores: atualizarMonitores,
+        aplicarAudio: aplicarAudio, salvarAudio: salvarAudio,
+        programa: function () { return programaAlvo; },
+        cortar: function (id) { lidar({ tipo: 'cortar', fonteId: id }); rerender(); }
+      });
+    }
 
     criarRtc();
     ligarEventos();

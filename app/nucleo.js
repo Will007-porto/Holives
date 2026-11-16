@@ -77,12 +77,57 @@
         '-movflags', '+frag_keyframe+empty_moov+default_base_moof', '-f', 'mp4', '-y', o.caminho);
     } else {
       var kbps = o.kbps || 4500;
+      var urls = o.urls && o.urls.length ? o.urls : [o.url];
       args.push('-c:v', 'libx264', '-preset', 'veryfast', '-tune', 'zerolatency', '-pix_fmt', 'yuv420p',
         '-b:v', kbps + 'k', '-maxrate', kbps + 'k', '-bufsize', (kbps * 2) + 'k',
         '-g', String(fps * 2), '-keyint_min', String(fps * 2), '-sc_threshold', '0',
-        '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-ac', '2', '-f', 'flv', o.url);
+        '-c:a', 'aac', '-b:a', '160k', '-ar', '48000', '-ac', '2');
+      if (urls.length === 1) args.push('-f', 'flv', urls[0]);
+      else {
+        // varios destinos com uma unica codificacao; se um cair, os outros continuam (onfail=ignore)
+        args.push('-flags', '+global_header', '-map', '0:v:0', '-map', '0:a:0', '-f', 'tee',
+          urls.map(function (u) { return '[f=flv:onfail=ignore]' + escaparTee(u); }).join('|'));
+      }
     }
     return args;
+  }
+
+  /** Escapa um endereco para o muxer "tee" do ffmpeg. */
+  function escaparTee(url) {
+    return String(url).replace(/[\\'|\[\]]/g, function (c) { return '\\' + c; });
+  }
+
+  /** Linha do ffmpeg avisando que um dos destinos do "tee" caiu -> indice (0..n) ou -1. */
+  function parseFalhaTee(linha) {
+    var m = /Slave muxer #(\d+) failed/i.exec(String(linha || ''));
+    return m ? parseInt(m[1], 10) : -1;
+  }
+
+  /** Volume 0..100 (controle deslizante simples) -> dB (-60..0). */
+  function percentualParaDb(p) {
+    p = Math.max(0, Math.min(100, Number(p) || 0));
+    if (p <= 0) return -60;
+    return Math.max(-60, Math.round(20 * Math.log10(p / 100) * 1.5));
+  }
+
+  /**
+   * Layout vertical 9:16: o video 16:9 fica deitado no meio, com uma faixa em cima e outra embaixo.
+   * Retorna os retangulos {x,y,w,h} de cada parte.
+   */
+  function layoutVertical(largura, altura) {
+    var hVideo = Math.round(largura * 9 / 16);
+    var topo = Math.floor((altura - hVideo) / 2);
+    return {
+      topo: { x: 0, y: 0, w: largura, h: topo },
+      video: { x: 0, y: topo, w: largura, h: hVideo },
+      base: { x: 0, y: topo + hVideo, w: largura, h: altura - topo - hVideo }
+    };
+  }
+
+  /** Retangulo de origem para preencher (cortando as sobras) um destino dw x dh com uma imagem sw x sh. */
+  function recorteCobrir(sw, sh, dw, dh) {
+    var r = Math.max(dw / sw, dh / sh), w = dw / r, h = dh / r;
+    return { sx: (sw - w) / 2, sy: (sh - h) / 2, sw: w, sh: h };
   }
 
   /** Extrai fps, kbps, quadros e perdidos de uma linha de progresso do ffmpeg. */
@@ -121,6 +166,8 @@
     dbParaLinear: dbParaLinear, nivelDeRms: nivelDeRms, ganhoEfetivo: ganhoEfetivo,
     resolucaoDe: resolucaoDe, calcularTally: calcularTally, montarUrlRtmp: montarUrlRtmp,
     redigirChave: redigirChave, argsFfmpeg: argsFfmpeg, parseProgressoFfmpeg: parseProgressoFfmpeg,
-    ordenarIps: ordenarIps, rotuloResolucao: rotuloResolucao
+    ordenarIps: ordenarIps, rotuloResolucao: rotuloResolucao,
+    escaparTee: escaparTee, parseFalhaTee: parseFalhaTee, percentualParaDb: percentualParaDb,
+    layoutVertical: layoutVertical, recorteCobrir: recorteCobrir
   };
 });

@@ -86,9 +86,28 @@ A chave de transmissão só é guardada se o sistema tiver cofre de senhas (Elec
 6. O seletor de cenários (F2) é desativado no aplicativo real.
 7. `destino-alternar`/`destino-salvar` fecham o modal e mostram “Salvo” (comportamento da interface); a ponte só faz o trabalho real.
 
+## Fase 2 (feita no computador, em 15/11/2026)
+
+| Item | Como usar | Onde |
+|------|-----------|------|
+| Tela de mídia | Coluna **Mídia**: “Adicionar arquivos” ou arrastar imagens/vídeos. Clique escolhe; botão direito tira da lista. A lista é lembrada ao reabrir. O vídeo começa ao entrar no ar e para ao sair; “Ao terminar” volta sozinho para a fonte anterior. O som da mídia só vai para a live quando a mídia está no ar. | `app/midia.js`, `app/arquivos.js`, `app/ponte-fase2.js` |
+| Câmera do computador, placa de captura (datashow) e tela do computador | **Configurações**: escolha o dispositivo de cada uma. Viram as fontes 5, 6 e 7. | `app/ponte-fase2.js`, `app/principal.js` |
+| Vários destinos ao mesmo tempo | Chips do topo > **Destinos**: ligue YouTube, Facebook, Instagram e até 5 extras. Os horizontais usam uma única codificação; se um cair, os outros continuam. | `app/ponte.js`, `app/ffmpeg.js`, `app/nucleo.js` |
+| Layout vertical 9:16 (Instagram) | Botão **Layout vertical 9:16**: arte de cima, arte de baixo, cor de fundo e texto, com prévia ao vivo. Sai em 720×1280. | `app/layout-vertical.js` |
+
+Verificado neste Windows com `npm test` (23 testes) e com um teste de ponta a ponta usando câmera falsa e três receptores RTMP
+locais: mídia (vídeo com som e imagem) no ar, webcam e tela como fontes, três destinos simultâneos (dois em 1920×1080 e um em
+720×1280), queda de um destino sem derrubar os outros, e gravação em MP4.
+**Não verificado:** YouTube, Facebook e Instagram de verdade (só receptores locais), placa de captura real, e o endereço padrão
+do Instagram (`rtmps://live-upload.instagram.com:443/rtmp/`) — copie a URL e a chave que o próprio Instagram mostrar.
+
+Os arquivos de mídia são entregues ao programa por `http://127.0.0.1:<porta>/midia/<token>/<id>` (só neste computador, só os
+arquivos que o operador adicionou). Isso é necessário para o mixer poder gravar e transmitir o que desenha.
+
 ## Pendências / próximos passos
-- Tela de mídia (canal “Mídia” existe na mesa mas sem fonte), placa de captura, webcam do computador, captura de tela.
-- Vários destinos ao mesmo tempo (hoje só o 1º cartão, “YouTube”; Facebook/Instagram/personalizado ignorados), layout vertical 9:16, sobreposições (logo/tarja/texto), Holyrics, controle por tablet (`controle.html` não tem ponte).
+- Sobreposições (logo/tarja/texto), Holyrics, controle por tablet (`controle.html` não tem ponte).
+- Som da placa de captura (HDMI) e da tela do computador: hoje só entra a imagem.
+- Com destinos horizontais e verticais juntos há duas codificações ao mesmo tempo; medir a CPU com 4 câmeras reais.
 - “Testar conexão” do destino; reconexão automática do RTMP quando cai (hoje encerra e avisa).
 - Botão no mestre para **remover** uma câmera já aceita (o hub já aceita `remover`); renomear câmera (modal existe, sem ação); mensagem do operador e retorno do NO AR na câmera (o hub já repassa `mensagem`; falta UI).
 - Travar foco/exposição e travar orientação na câmera (botões existem, sem efeito).

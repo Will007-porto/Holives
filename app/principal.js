@@ -1,6 +1,6 @@
 /* principal.js - processo principal do Electron (mestre Holives). */
 'use strict';
-const { app, BrowserWindow, ipcMain, session, safeStorage, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, session, safeStorage, shell, desktopCapturer } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const QRCode = require('qrcode');
@@ -8,6 +8,7 @@ const N = require('./nucleo');
 const { obterCertificado, ipsLocais } = require('./certificado');
 const { criarServidor } = require('./servidor');
 const { GerenteFfmpeg } = require('./ffmpeg');
+const { Arquivos } = require('./arquivos');
 
 const RAIZ = path.join(__dirname, '..');
 const PORTA_PADRAO = 8443;
@@ -24,37 +25,70 @@ let janela = null;
 let servidor = null;
 let infoRede = null;
 let ffmpeg = null;
+const arquivos = new Arquivos();
+let telaEscolhida = '';
 
 // ---- configuracoes (pasta de dados do usuario; a chave de transmissao so e salva cifrada) ----
 function arquivoConfig() { return path.join(app.getPath('userData'), 'config.json'); }
 function lerConfig() {
   try { return JSON.parse(fs.readFileSync(arquivoConfig(), 'utf8')); } catch (e) { return {}; }
 }
+function decifrar(texto) {
+  if (!texto || !safeStorage.isEncryptionAvailable()) return '';
+  try { return safeStorage.decryptString(Buffer.from(texto, 'base64')); } catch (e) { return ''; }
+}
+const DESTINOS_PADRAO = [
+  { id: 'youtube', nome: 'YouTube', servidor: 'rtmp://a.rtmp.youtube.com/live2', formato: 'horizontal', ativo: true },
+  { id: 'facebook', nome: 'Facebook', servidor: 'rtmps://live-api-s.facebook.com:443/rtmp/', formato: 'horizontal', ativo: false },
+  { id: 'instagram', nome: 'Instagram', servidor: 'rtmps://live-upload.instagram.com:443/rtmp/', formato: 'vertical', ativo: false }
+];
+/** Lista de destinos guardada (com chaves cifradas). Migra o formato antigo de um destino so. */
+function destinosGuardados(c) {
+  if (Array.isArray(c.destinos) && c.destinos.length) return c.destinos;
+  return DESTINOS_PADRAO.map((d) => Object.assign({}, d, d.id === 'youtube' ? { servidor: c.servidor || d.servidor, chaveCifrada: c.chaveCifrada || '' } : {}));
+}
 function configParaRenderer() {
   const c = lerConfig();
-  let chave = '';
-  if (c.chaveCifrada && safeStorage.isEncryptionAvailable()) {
-    try { chave = safeStorage.decryptString(Buffer.from(c.chaveCifrada, 'base64')); } catch (e) { chave = ''; }
-  }
+  const destinos = destinosGuardados(c).map((d) => ({
+    id: d.id, nome: d.nome, servidor: d.servidor || '', formato: d.formato === 'vertical' ? 'vertical' : 'horizontal',
+    ativo: !!d.ativo, chave: decifrar(d.chaveCifrada)
+  }));
   return {
     pastaGravacao: c.pastaGravacao || path.join(app.getPath('videos'), 'Holives'),
     resolucao: c.resolucao || '1080p', fps: c.fps || 30,
     entradaMesaId: c.entradaMesaId || '', saidaFoneId: c.saidaFoneId || '',
     ipEscolhido: c.ipEscolhido || '',
-    destino: { servidor: c.servidor || 'rtmp://a.rtmp.youtube.com/live2', chave: chave },
+    webcamId: c.webcamId || '', capturaId: c.capturaId || '', telaId: c.telaId || '',
+    destinos,
     podeGuardarChave: safeStorage.isEncryptionAvailable()
   };
 }
 function salvarConfig(novo) {
   const c = lerConfig();
-  ['pastaGravacao', 'resolucao', 'entradaMesaId', 'saidaFoneId', 'ipEscolhido'].forEach((k) => { if (typeof novo[k] === 'string') c[k] = novo[k].slice(0, 500); });
+  ['pastaGravacao', 'resolucao', 'entradaMesaId', 'saidaFoneId', 'ipEscolhido', 'webcamId', 'capturaId', 'telaId'].forEach((k) => { if (typeof novo[k] === 'string') c[k] = novo[k].slice(0, 500); });
   if (novo.fps) c.fps = novo.fps === 60 ? 60 : 30;
-  if (novo.destino) {
-    if (typeof novo.destino.servidor === 'string') c.servidor = novo.destino.servidor.slice(0, 500);
-    if (typeof novo.destino.chave === 'string') {
-      if (novo.destino.chave && safeStorage.isEncryptionAvailable()) c.chaveCifrada = safeStorage.encryptString(novo.destino.chave).toString('base64');
-      else delete c.chaveCifrada;
-    }
+  if (Array.isArray(novo.destinos)) {
+    const antigos = destinosGuardados(c);
+    c.destinos = novo.destinos.slice(0, 8).map((d, i) => {
+      const id = String(d.id || 'destino' + i).replace(/[^\w-]/g, '').slice(0, 30) || 'destino' + i;
+      const antigo = antigos.find((a) => a.id === id) || {};
+      const r = {
+        id, nome: String(d.nome || 'Destino').slice(0, 40), servidor: String(d.servidor || '').slice(0, 500),
+        formato: d.formato === 'vertical' ? 'vertical' : 'horizontal', ativo: !!d.ativo, chaveCifrada: antigo.chaveCifrada || ''
+      };
+      // a chave so e guardada cifrada pelo cofre do sistema; sem cofre, nao e guardada
+      if (typeof d.chave === 'string') r.chaveCifrada = d.chave && safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(d.chave.slice(0, 500)).toString('base64') : '';
+      return r;
+    });
+    delete c.servidor; delete c.chaveCifrada;
+  }
+  if (Array.isArray(novo.midia)) c.midia = novo.midia.filter((x) => typeof x === 'string').slice(0, 200);
+  if (novo.vertical && typeof novo.vertical === 'object') {
+    c.vertical = {
+      topo: String(novo.vertical.topo || '').slice(0, 1000), base: String(novo.vertical.base || '').slice(0, 1000),
+      cor: /^#[0-9a-f]{6}$/i.test(novo.vertical.cor || '') ? novo.vertical.cor : '#15171C',
+      texto: String(novo.vertical.texto || '').slice(0, 80)
+    };
   }
   fs.mkdirSync(path.dirname(arquivoConfig()), { recursive: true });
   fs.writeFileSync(arquivoConfig(), JSON.stringify(c, null, 2));
@@ -83,6 +117,54 @@ function registrarIpc() {
     if (!senderConfiavel(e)) return 0;
     return Math.round(app.getAppMetrics().reduce((s, m) => s + (m.cpu ? m.cpu.percentCPUUsage : 0), 0));
   });
+  // ---- arquivos de midia (so os que o operador escolheu)
+  const listaMidia = () => (lerConfig().midia || []).map((p) => arquivos.registrar(p)).filter(Boolean).map((i) => arquivos.publico(i, infoRede.portaLocal));
+  ipcMain.handle('holives:midia-listar', (e) => (senderConfiavel(e) ? listaMidia() : []));
+  ipcMain.handle('holives:midia-adicionar', (e, caminhos) => {
+    if (!senderConfiavel(e) || !Array.isArray(caminhos)) return { itens: [], recusados: 0 };
+    const atuais = lerConfig().midia || [];
+    let recusados = 0;
+    caminhos.slice(0, 100).forEach((p) => {
+      const item = arquivos.registrar(p);
+      if (!item) { recusados++; return; }
+      if (!atuais.includes(item.caminho)) atuais.push(item.caminho);
+    });
+    salvarConfig({ midia: atuais });
+    return { itens: listaMidia(), recusados };
+  });
+  ipcMain.handle('holives:midia-remover', (e, id) => {
+    if (!senderConfiavel(e)) return [];
+    const item = arquivos.porId.get(String(id));
+    if (item) { salvarConfig({ midia: (lerConfig().midia || []).filter((p) => p !== item.caminho) }); arquivos.remover(item.id); }
+    return listaMidia();
+  });
+  // ---- layout vertical (Instagram): artes de cima e de baixo, cor e texto
+  const verticalPublico = () => {
+    const v = lerConfig().vertical || {};
+    const url = (p) => { const i = p && arquivos.registrar(p); return i && i.tipo === 'imagem' ? arquivos.publico(i, infoRede.portaLocal).url : ''; };
+    return { topoUrl: url(v.topo), baseUrl: url(v.base), cor: v.cor || '#15171C', texto: v.texto || '' };
+  };
+  ipcMain.handle('holives:vertical-obter', (e) => (senderConfiavel(e) ? verticalPublico() : null));
+  ipcMain.handle('holives:vertical-salvar', (e, v) => {
+    if (!senderConfiavel(e) || !v) return null;
+    const atual = lerConfig().vertical || {};
+    // topo/base: caminho novo (texto), '' para remover, undefined para manter o que ja estava
+    const escolher = (novo, antigo) => {
+      if (novo === undefined) return antigo || '';
+      const i = novo && arquivos.registrar(novo);
+      return i && i.tipo === 'imagem' ? i.caminho : '';
+    };
+    salvarConfig({ vertical: { topo: escolher(v.topo, atual.topo), base: escolher(v.base, atual.base), cor: v.cor, texto: v.texto } });
+    return verticalPublico();
+  });
+  // ---- captura de tela do computador
+  ipcMain.handle('holives:telas', async (e) => {
+    if (!senderConfiavel(e)) return [];
+    try { return (await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })).map((s, i) => ({ id: s.id, nome: s.name || 'Tela ' + (i + 1) })); }
+    catch (err) { return []; }
+  });
+  ipcMain.handle('holives:tela-escolher', (e, id) => { if (senderConfiavel(e)) telaEscolhida = String(id || ''); return true; });
+
   ipcMain.handle('holives:ffmpeg-iniciar', (e, o) => {
     if (!senderConfiavel(e)) return { ok: false, erro: 'Origem não permitida.' };
     o = o || {};
@@ -99,7 +181,7 @@ async function iniciar() {
   const cert = await obterCertificado(pastaCert, ips.map((i) => i.ip));
   servidor = criarServidor({
     cert: cert.cert, key: cert.key, porta: PORTA_PADRAO,
-    raizUi: path.join(RAIZ, 'ui'), raizApp: __dirname
+    raizUi: path.join(RAIZ, 'ui'), raizApp: __dirname, arquivos
   });
   const portas = await servidor.iniciar();
   infoRede = { ips, porta: portas.porta, portaLocal: portas.portaLocal };
@@ -109,9 +191,15 @@ async function iniciar() {
 
   // camera e microfone so para a propria janela do mestre
   const ses = session.defaultSession;
-  const permitido = (wc, perm) => wc === (janela && janela.webContents) && ['media', 'audioCapture', 'videoCapture'].includes(perm);
+  const permitido = (wc, perm) => wc === (janela && janela.webContents) && ['media', 'audioCapture', 'videoCapture', 'display-capture'].includes(perm);
   ses.setPermissionRequestHandler((wc, perm, cb) => cb(permitido(wc, perm)));
   ses.setPermissionCheckHandler((wc, perm) => permitido(wc, perm));
+  // "Tela do computador": entrega a tela escolhida em Configuracoes, sem abrir seletor
+  ses.setDisplayMediaRequestHandler((pedido, responder) => {
+    desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
+      .then((fontes) => { const f = fontes.find((s) => s.id === telaEscolhida) || fontes[0]; if (f) responder({ video: f }); else responder({}); })
+      .catch(() => responder({}));
+  });
 
   janela = new BrowserWindow({
     width: 1440, height: 860, minWidth: 1100, minHeight: 680, backgroundColor: '#0B0C0F',

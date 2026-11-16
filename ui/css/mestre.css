@@ -75,7 +75,8 @@ body.mestre{height:100dvh;overflow:hidden;display:flex;flex-direction:column}
 .col-transicao select{min-height:30px;padding-block:2px}
 .fontes-area,.audio-area{flex:none}
 .fontes-area h3{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fonte-card{width:142px;padding:6px}
+.fonte-card{width:128px;padding:6px}
+@media (min-width:1700px){.fonte-card{width:150px}}
 .fonte-card .linha{margin-top:4px;gap:6px}
 .fonte-card .linha strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font-size:13px}
 .fonte-card.vazio{min-height:0;align-self:stretch}

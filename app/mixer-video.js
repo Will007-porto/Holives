@@ -48,13 +48,18 @@
 
   MixerVideo.prototype._desenharFonte = function (id, alpha, dx, escala) {
     var v = id && this.fontes[id];
-    if (!v || v.readyState < 2 || !v.videoWidth) return;
+    if (!v) return;
+    // a fonte pode ser <video> (cameras, webcam, captura, tela, video de midia) ou <img> (imagem de midia)
+    var fw, fh;
+    if (v.tagName === 'VIDEO') { if (v.readyState < 2) return; fw = v.videoWidth; fh = v.videoHeight; }
+    else { if (v.complete === false) return; fw = v.naturalWidth || v.width; fh = v.naturalHeight || v.height; }
+    if (!fw || !fh) return;
     var cw = this.largura, ch = this.altura;
-    var r = Math.min(cw / v.videoWidth, ch / v.videoHeight) * (escala || 1);
-    var w = v.videoWidth * r, h = v.videoHeight * r;
+    var r = Math.min(cw / fw, ch / fh) * (escala || 1);
+    var w = fw * r, h = fh * r;
     var c = this.ctx;
     c.globalAlpha = Math.max(0, Math.min(1, alpha));
-    c.drawImage(v, (cw - w) / 2 + (dx || 0), (ch - h) / 2, w, h);
+    try { c.drawImage(v, (cw - w) / 2 + (dx || 0), (ch - h) / 2, w, h); } catch (e) { /* quadro indisponivel neste instante */ }
     c.globalAlpha = 1;
   };
 

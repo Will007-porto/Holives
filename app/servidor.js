@@ -62,7 +62,11 @@ function criarServidor(opcoes) {
     wssCameras.handleUpgrade(req, socket, head, (ws) => sinal.conectar(ws, 'camera'));
   });
 
-  const servidorLocal = http.createServer((req, res) => { res.writeHead(404); res.end(); });
+  // loopback: sinalizacao do mestre e arquivos de midia escolhidos pelo operador
+  const servidorLocal = http.createServer((req, res) => {
+    if (opcoes.arquivos && opcoes.arquivos.atender(req, res)) return;
+    res.writeHead(404); res.end();
+  });
   const wssMestre = new WebSocketServer({ noServer: true, maxPayload: 256 * 1024 });
   servidorLocal.on('upgrade', (req, socket, head) => {
     const ok = (req.url || '').split('?')[0] === '/ws-mestre' &&
@@ -81,7 +85,8 @@ function criarServidor(opcoes) {
     async iniciar() {
       const portaLocal = await escutar(servidorLocal, 0, '127.0.0.1');
       let porta;
-      try { porta = await escutar(servidorCameras, opcoes.porta || 8443, '0.0.0.0'); }
+      // porta 0 = "qualquer porta livre" (usado nos testes); sem valor = 8443
+      try { porta = await escutar(servidorCameras, opcoes.porta == null ? 8443 : opcoes.porta, '0.0.0.0'); }
       catch (e) {
         if (e.code === 'EADDRINUSE' && opcoes.porta) porta = await escutar(servidorCameras, 0, '0.0.0.0');
         else throw e;
